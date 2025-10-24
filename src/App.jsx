@@ -180,9 +180,9 @@ export default function App() {
       </div>
 
       {/* Main content */}
-      <div className="relative z-10 px-5 pt-56 pb-8 min-h-screen">
-        {/* White background container - 20px from edges, tasks 16px from white box edges */}
-        <div className="bg-white/95 rounded-2xl p-4 shadow-2xl w-full max-w-md mx-auto">
+      <div className="relative z-10 px-5 pt-32 pb-8 min-h-screen">
+        {/* White background container - extended top to overlap with logo */}
+        <div className="bg-white/95 rounded-2xl pt-32 px-4 pb-4 shadow-2xl w-full max-w-md mx-auto">
           
           {/* 4x4 Grid with fixed width boxes (82px) and dynamic spacing */}
           <div className="flex flex-col gap-0 justify-between" style={{ gap: 'calc((100% - 328px) / 3)' }}>
