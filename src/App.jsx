@@ -170,18 +170,20 @@ export default function App() {
         />
       </div>
 
-      {/* Logo at top - overlay on background */}
-      <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-20 w-80">
-        <img 
-          src="https://i.imgur.com/2TtbhMD.png"
-          alt="Logo"
-          className="w-full h-auto drop-shadow-2xl"
-        />
-      </div>
-
       {/* Main content */}
       <div className="relative z-10 max-w-md mx-auto px-3 py-8 min-h-screen flex items-center">
-        <div className="bg-white/95 rounded-2xl p-6 shadow-2xl w-full mt-40">
+        {/* White background container with extended top */}
+        <div className="bg-white/95 rounded-2xl p-6 shadow-2xl w-full pt-32">
+          
+          {/* Logo - positioned to overlap: 40% inside white box, 60% outside */}
+          <div className="absolute left-1/2 transform -translate-x-1/2 -top-24 z-30 w-3/5">
+            <img 
+              src="https://i.imgur.com/2TtbhMD.png"
+              alt="Logo"
+              className="w-full h-auto drop-shadow-2xl"
+            />
+          </div>
+
           {/* 4x4 Grid */}
           <div className="grid grid-cols-4 gap-2">
             {shuffledTasks.map((task, index) => (
