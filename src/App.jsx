@@ -184,10 +184,10 @@ export default function App() {
         {/* White background container - extended top to overlap with logo */}
         <div className="bg-white/95 rounded-2xl pt-32 px-4 pb-4 shadow-2xl w-full max-w-md mx-auto">
           
-          {/* 4x4 Grid with fixed width boxes (82px) and dynamic spacing */}
-          <div className="flex flex-col gap-0 justify-between" style={{ gap: 'calc((100% - 328px) / 3)' }}>
+          {/* 4x4 Grid with min-width 64px and dynamic sizing */}
+          <div className="flex flex-col gap-3">
             {[0, 1, 2, 3].map((row) => (
-              <div key={row} className="flex justify-between">
+              <div key={row} className="flex justify-between gap-2">
                 {[0, 1, 2, 3].map((col) => {
                   const index = row * 4 + col;
                   const task = shuffledTasks[index];
@@ -195,9 +195,8 @@ export default function App() {
                     <button
                       key={index}
                       onClick={() => handleTaskClick(index)}
-                      style={{ width: '82px' }}
                       className={`
-                        min-h-24 p-2 rounded-lg transition-all duration-200 flex flex-col items-center justify-center
+                        flex-1 min-w-[64px] min-h-24 p-2 rounded-lg transition-all duration-200 flex flex-col items-center justify-center
                         ${taskStates[index] === 'default' ? 'bg-white border-2 border-black hover:bg-gray-50' : ''}
                         ${taskStates[index] === 'clicking' ? 'bg-white border-2 border-green-500 scale-95 h-24' : ''}
                         ${taskStates[index] === 'finished' ? 'bg-white border-2 border-green-600 h-24' : ''}
