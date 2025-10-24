@@ -4,7 +4,7 @@ const BeerIcon = ({ stage }) => (
   <img 
     src={stage === 'clicking' ? "https://i.imgur.com/pz5ZsvU.png" : "https://i.imgur.com/ewmSdfo.png"} 
     alt="Beer Cheers"
-    className="w-16 h-16 object-contain"
+    className="w-20 h-20 object-contain"
   />
 );
 
@@ -170,18 +170,18 @@ export default function App() {
         />
       </div>
 
+      {/* Logo at top - overlay on background */}
+      <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-20 w-80">
+        <img 
+          src="https://i.imgur.com/2TtbhMD.png"
+          alt="Logo"
+          className="w-full h-auto drop-shadow-2xl"
+        />
+      </div>
+
       {/* Main content */}
       <div className="relative z-10 max-w-md mx-auto px-3 py-8 min-h-screen flex items-center">
-        <div className="bg-white/95 rounded-2xl p-6 shadow-2xl w-full">
-          {/* Logo - 60% width and centered */}
-          <div className="mb-6 flex justify-center">
-            <img 
-              src="https://i.imgur.com/2TtbhMD.png"
-              alt="Logo"
-              className="w-3/5 h-auto"
-            />
-          </div>
-
+        <div className="bg-white/95 rounded-2xl p-6 shadow-2xl w-full mt-40">
           {/* 4x4 Grid */}
           <div className="grid grid-cols-4 gap-2">
             {shuffledTasks.map((task, index) => (
