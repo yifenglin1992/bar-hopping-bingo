@@ -173,12 +173,12 @@ export default function App() {
       {/* Main content */}
       <div className="relative z-10 max-w-md mx-auto px-3 py-8 min-h-screen flex items-center">
         <div className="bg-white/95 rounded-2xl p-6 shadow-2xl w-full">
-          {/* Logo */}
-          <div className="mb-6">
+          {/* Logo - 60% width and centered */}
+          <div className="mb-6 flex justify-center">
             <img 
               src="https://i.imgur.com/2TtbhMD.png"
               alt="Logo"
-              className="w-full h-auto"
+              className="w-3/5 h-auto"
             />
           </div>
 
