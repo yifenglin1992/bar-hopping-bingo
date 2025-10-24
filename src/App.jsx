@@ -4,7 +4,7 @@ const BeerIcon = ({ stage }) => (
   <img 
     src={stage === 'clicking' ? "https://i.imgur.com/pz5ZsvU.png" : "https://i.imgur.com/ewmSdfo.png"} 
     alt="Beer Cheers"
-    className="w-20 h-20 object-contain"
+    className="w-full h-full object-contain"
   />
 );
 
@@ -170,22 +170,22 @@ export default function App() {
         />
       </div>
 
-      {/* Main content */}
-      <div className="relative z-10 max-w-md mx-auto px-3 py-8 min-h-screen flex items-center">
-        {/* White background container with extended top */}
-        <div className="bg-white/95 rounded-2xl p-6 shadow-2xl w-full pt-32">
-          
-          {/* Logo - positioned to overlap: 40% inside white box, 60% outside */}
-          <div className="absolute left-1/2 transform -translate-x-1/2 -top-24 z-30 w-3/5">
-            <img 
-              src="https://i.imgur.com/2TtbhMD.png"
-              alt="Logo"
-              className="w-full h-auto drop-shadow-2xl"
-            />
-          </div>
+      {/* Logo - positioned at top, overlapping background and white box */}
+      <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-20 w-64">
+        <img 
+          src="https://i.imgur.com/2TtbhMD.png"
+          alt="Logo"
+          className="w-full h-auto drop-shadow-2xl"
+        />
+      </div>
 
+      {/* Main content */}
+      <div className="relative z-10 max-w-md mx-auto px-3 pt-48 pb-8 min-h-screen">
+        {/* White background container */}
+        <div className="bg-white/95 rounded-2xl p-6 shadow-2xl w-full">
+          
           {/* 4x4 Grid */}
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 gap-3">
             {shuffledTasks.map((task, index) => (
               <button
                 key={index}
@@ -204,13 +204,13 @@ export default function App() {
                 )}
                 
                 {taskStates[index] === 'clicking' && (
-                  <div className="flex flex-col items-center justify-center h-full">
+                  <div className="flex flex-col items-center justify-center h-full w-full p-1">
                     <BeerIcon stage="clicking" />
                   </div>
                 )}
                 
                 {taskStates[index] === 'finished' && (
-                  <div className="flex flex-col items-center justify-center h-full">
+                  <div className="flex flex-col items-center justify-center h-full w-full p-1">
                     <BeerIcon stage="finished" />
                   </div>
                 )}
