@@ -170,8 +170,8 @@ export default function App() {
         />
       </div>
 
-      {/* Logo - positioned at top, overlapping background and white box */}
-      <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-20 w-64">
+      {/* Logo - positioned at top with 20px margin on both sides */}
+      <div className="absolute top-16 left-5 right-5 z-20">
         <img 
           src="https://i.imgur.com/2TtbhMD.png"
           alt="Logo"
@@ -191,10 +191,10 @@ export default function App() {
                 key={index}
                 onClick={() => handleTaskClick(index)}
                 className={`
-                  h-24 p-3 rounded-lg transition-all duration-200 flex flex-col items-center justify-center
+                  min-h-24 p-3 rounded-lg transition-all duration-200 flex flex-col items-center justify-center
                   ${taskStates[index] === 'default' ? 'bg-white border-2 border-black hover:bg-gray-50' : ''}
-                  ${taskStates[index] === 'clicking' ? 'bg-white border-2 border-green-500 scale-95' : ''}
-                  ${taskStates[index] === 'finished' ? 'bg-white border-2 border-green-600' : ''}
+                  ${taskStates[index] === 'clicking' ? 'bg-white border-2 border-green-500 scale-95 h-24' : ''}
+                  ${taskStates[index] === 'finished' ? 'bg-white border-2 border-green-600 h-24' : ''}
                 `}
               >
                 {taskStates[index] === 'default' && (
