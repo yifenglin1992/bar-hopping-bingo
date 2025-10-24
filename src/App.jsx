@@ -4,7 +4,7 @@ const BeerIcon = ({ stage }) => (
   <img 
     src={stage === 'clicking' ? "https://i.imgur.com/pz5ZsvU.png" : "https://i.imgur.com/ewmSdfo.png"} 
     alt="Beer Cheers"
-    className="w-12 h-12 object-contain"
+    className="w-16 h-16 object-contain"
   />
 );
 
@@ -86,7 +86,7 @@ export default function App() {
       newStates[index] = 'clicking';
       setTaskStates(newStates);
       
-      // After 200ms, change to finished with icon 2
+      // After 500ms, change to finished with icon 2
       setTimeout(() => {
         const updatedStates = [...taskStates];
         updatedStates[index] = 'finished';
@@ -99,7 +99,7 @@ export default function App() {
             setCelebrationStage(0);
           }, 300);
         }
-      }, 200);
+      }, 500);
     } else if (currentState === 'finished') {
       // Reset to default
       const newStates = [...taskStates];
@@ -161,14 +161,8 @@ export default function App() {
 
   return (
     <div className="w-full min-h-screen bg-blue-900 relative overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0">
-        <div className="w-full h-full bg-gradient-to-br from-blue-600 to-blue-900"></div>
-      </div>
-
-      {/* Top image/logo area */}
-      <div className="relative z-10 w-full h-60 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-blue-900 opacity-50"></div>
+      {/* Full screen background image */}
+      <div className="absolute inset-0 z-0">
         <img 
           src="https://i.imgur.com/W0XrIS3.png"
           alt="Party Background"
@@ -177,8 +171,8 @@ export default function App() {
       </div>
 
       {/* Main content */}
-      <div className="relative z-10 max-w-md mx-auto px-3 pb-8">
-        <div className="bg-white/95 rounded-2xl p-6 shadow-2xl">
+      <div className="relative z-10 max-w-md mx-auto px-3 py-8 min-h-screen flex items-center">
+        <div className="bg-white/95 rounded-2xl p-6 shadow-2xl w-full">
           {/* Logo */}
           <div className="mb-6">
             <img 
@@ -197,7 +191,7 @@ export default function App() {
                 className={`
                   aspect-square p-2 rounded-lg transition-all duration-200 flex flex-col items-center justify-center
                   ${taskStates[index] === 'default' ? 'bg-white border-2 border-black hover:bg-gray-50' : ''}
-                  ${taskStates[index] === 'clicking' ? 'bg-yellow-100 border-2 border-yellow-500 scale-95' : ''}
+                  ${taskStates[index] === 'clicking' ? 'bg-white border-2 border-green-500 scale-95' : ''}
                   ${taskStates[index] === 'finished' ? 'bg-white border-2 border-green-600' : ''}
                 `}
               >
@@ -216,12 +210,6 @@ export default function App() {
                 {taskStates[index] === 'finished' && (
                   <div className="flex flex-col items-center justify-center h-full">
                     <BeerIcon stage="finished" />
-                    <div className="flex items-center gap-1 mt-1">
-                      <div className="w-2 h-2 bg-green-600 rounded-full flex items-center justify-center">
-                        <div className="w-1 h-1 bg-white"></div>
-                      </div>
-                      <span className="text-[10px] font-bold text-green-600">Finish!</span>
-                    </div>
                   </div>
                 )}
               </button>
