@@ -181,8 +181,8 @@ export default function App() {
 
       {/* Main content */}
       <div className="relative z-10 max-w-md mx-auto px-3 pt-48 pb-8 min-h-screen">
-        {/* White background container */}
-        <div className="bg-white/95 rounded-2xl p-6 shadow-2xl w-full">
+        {/* White background container - increased height */}
+        <div className="bg-white/95 rounded-2xl p-8 shadow-2xl w-full">
           
           {/* 4x4 Grid */}
           <div className="grid grid-cols-4 gap-3">
@@ -191,26 +191,26 @@ export default function App() {
                 key={index}
                 onClick={() => handleTaskClick(index)}
                 className={`
-                  aspect-square p-2 rounded-lg transition-all duration-200 flex flex-col items-center justify-center
+                  h-24 p-3 rounded-lg transition-all duration-200 flex flex-col items-center justify-center
                   ${taskStates[index] === 'default' ? 'bg-white border-2 border-black hover:bg-gray-50' : ''}
                   ${taskStates[index] === 'clicking' ? 'bg-white border-2 border-green-500 scale-95' : ''}
                   ${taskStates[index] === 'finished' ? 'bg-white border-2 border-green-600' : ''}
                 `}
               >
                 {taskStates[index] === 'default' && (
-                  <div className="text-[10px] leading-tight text-center text-black">
+                  <div className="text-xs leading-tight text-center text-black">
                     {task}
                   </div>
                 )}
                 
                 {taskStates[index] === 'clicking' && (
-                  <div className="flex flex-col items-center justify-center h-full w-full p-1">
+                  <div className="flex flex-col items-center justify-center h-full w-full">
                     <BeerIcon stage="clicking" />
                   </div>
                 )}
                 
                 {taskStates[index] === 'finished' && (
-                  <div className="flex flex-col items-center justify-center h-full w-full p-1">
+                  <div className="flex flex-col items-center justify-center h-full w-full">
                     <BeerIcon stage="finished" />
                   </div>
                 )}
