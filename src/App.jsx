@@ -103,7 +103,7 @@ function HomePage({ onStartGame, language, setLanguage }) {
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
               placeholder={language === 'chinese' ? '玩家１' : 'Player 1'}
-              className="w-full text-center text-white text-base bg-transparent border-none outline-none placeholder-white/70 px-4"
+              className="grow shrink basis-0 self-stretch text-center text-white text-base bg-transparent border-none outline-none placeholder-white/70 px-4"
             />
           </div>
 
@@ -133,9 +133,96 @@ function HomePage({ onStartGame, language, setLanguage }) {
   );
 }
 
+// Progress View Page Component
+function ProgressViewPage({ onBack, myProgress, language }) {
+  // Mock data for other players - in real app this would come from shared storage
+  const otherPlayers = [
+    { name: language === 'chinese' ? '玩家１' : 'Player 1', progress: 60 },
+    { name: language === 'chinese' ? '玩家２' : 'Player 2', progress: 60 },
+    { name: language === 'chinese' ? '玩家３' : 'Player 3', progress: 60 },
+    { name: language === 'chinese' ? '玩家４' : 'Player 4', progress: 60 },
+    { name: language === 'chinese' ? '玩家５' : 'Player 5', progress: 60 },
+  ];
+
+  return (
+    <div className="w-full h-screen bg-blue-900 relative overflow-hidden">
+      {/* Background image */}
+      <div className="absolute inset-0 z-0">
+        <img 
+          src="https://i.imgur.com/W0XrIS3.png"
+          alt="Background"
+          className="w-full h-full object-cover"
+        />
+      </div>
+
+      {/* Back button */}
+      <button
+        onClick={onBack}
+        className="absolute top-8 left-4 z-30 w-10 h-10 bg-indigo-700 rounded-full shadow flex items-center justify-center hover:bg-indigo-600 transition-colors"
+      >
+        <svg width="12" height="20" viewBox="0 0 12 20" fill="none">
+          <path d="M10 2L2 10L10 18" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+
+      {/* Content container */}
+      <div className="relative z-10 px-4 pt-20 pb-8 h-full overflow-y-auto">
+        {/* My Progress Card */}
+        <div className="bg-white/95 rounded-2xl p-4 mb-4">
+          <div className="text-black text-base font-bold mb-2">
+            {language === 'chinese' ? '我的進度:' : 'My Progress:'}
+          </div>
+          <div className="relative w-full h-8 bg-white rounded-2xl border border-blue-900 overflow-hidden">
+            <div 
+              className="absolute left-0 top-0 h-full bg-yellow-400 rounded-2xl transition-all duration-300"
+              style={{ width: `${myProgress}%` }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center text-black text-base font-bold">
+              {myProgress}%
+            </div>
+          </div>
+        </div>
+
+        {/* Other Players Progress Card */}
+        <div className="bg-white/95 rounded-2xl p-4 mb-4">
+          <div className="text-black text-base font-bold mb-4">
+            {language === 'chinese' ? '其他玩家進度:' : 'Other Players Progress:'}
+          </div>
+          
+          <div className="space-y-4">
+            {otherPlayers.map((player, index) => (
+              <div key={index}>
+                <div className="text-black text-base mb-1">{player.name}</div>
+                <div className="relative w-full h-8 bg-white rounded-2xl border border-blue-900 overflow-hidden">
+                  <div 
+                    className="absolute left-0 top-0 h-full bg-yellow-400 rounded-2xl transition-all duration-300"
+                    style={{ width: `${player.progress}%` }}
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center text-black text-base font-bold">
+                    {player.progress}%
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Logo at bottom */}
+        <div className="mt-4">
+          <img 
+            src="https://i.imgur.com/2TtbhMD.png"
+            alt="Logo"
+            className="w-full max-w-md mx-auto"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Main App Component
 export default function App() {
-  // Game state: 'home' or 'playing'
+  // Game state: 'home', 'playing', or 'progress'
   const [gameState, setGameState] = useState('home');
   const [playerName, setPlayerName] = useState('');
 
@@ -173,6 +260,9 @@ export default function App() {
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationStage, setCelebrationStage] = useState(0);
 
+  // Calculate progress
+  const myProgress = Math.round((taskStates.filter(s => s === 'finished').length / 16) * 100);
+
   // Save task states to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('barHoppingStates', JSON.stringify(taskStates));
@@ -186,6 +276,16 @@ export default function App() {
   // Handle start game
   const handleStartGame = (name) => {
     setPlayerName(name);
+    setGameState('playing');
+  };
+
+  // Handle view progress
+  const handleViewProgress = () => {
+    setGameState('progress');
+  };
+
+  // Handle back to game
+  const handleBackToGame = () => {
     setGameState('playing');
   };
 
@@ -310,6 +410,11 @@ export default function App() {
     return <HomePage onStartGame={handleStartGame} language={language} setLanguage={setLanguage} />;
   }
 
+  // Show progress view page
+  if (gameState === 'progress') {
+    return <ProgressViewPage onBack={handleBackToGame} myProgress={myProgress} language={language} />;
+  }
+
   // Celebration screen
   if (showCelebration) {
     return (
@@ -374,9 +479,9 @@ export default function App() {
         />
       </div>
 
-      {/* Logo - clickable to toggle language */}
+      {/* Logo - clickable to view progress */}
       <button 
-        onClick={toggleLanguage}
+        onClick={handleViewProgress}
         className="absolute top-8 left-5 right-5 z-20 cursor-pointer hover:opacity-80 transition-opacity"
       >
         <img 
@@ -390,13 +495,6 @@ export default function App() {
       <div className="relative z-10 px-5 pt-32 pb-8 min-h-screen">
         {/* White background container - extended top to overlap with logo */}
         <div className="bg-white/95 rounded-2xl pt-32 px-4 pb-4 shadow-2xl w-full max-w-md mx-auto">
-          
-          {/* Player name display */}
-          <div className="mb-4 text-center">
-            <div className="text-sm font-bold text-gray-700">
-              {language === 'chinese' ? '玩家' : 'Player'}: {playerName}
-            </div>
-          </div>
 
           {/* 4x4 Grid with min-width 64px and dynamic sizing */}
           <div className="flex flex-col gap-3">
