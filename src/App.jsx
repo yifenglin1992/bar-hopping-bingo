@@ -73,53 +73,58 @@ function HomePage({ onStartGame, language, setLanguage }) {
   };
 
   return (
-    <div className="w-full h-screen bg-blue-900 relative overflow-hidden flex items-center justify-center">
-      {/* Background image - top */}
-      <img 
-        src="https://i.imgur.com/W0XrIS3.png"
-        alt="Background Top"
-        className="w-full h-auto absolute top-0 left-0 object-cover"
-        style={{ maxHeight: '50%' }}
-      />
+    <div className="w-full h-screen bg-blue-900 relative overflow-hidden">
+      {/* Background image - top half */}
+      <div className="absolute top-0 left-0 right-0 h-1/2 z-0">
+        <img 
+          src="https://i.imgur.com/W0XrIS3.png"
+          alt="Background"
+          className="w-full h-full object-cover"
+        />
+      </div>
 
-      {/* Logo */}
-      <img 
-        src="https://i.imgur.com/2TtbhMD.png"
-        alt="Logo"
-        className="w-full max-w-md absolute top-80 left-1/2 transform -translate-x-1/2 px-4"
-      />
+      {/* Logo - overlapping background and blue section */}
+      <div className="absolute left-0 right-0 top-1/3 z-10 px-4">
+        <img 
+          src="https://i.imgur.com/2TtbhMD.png"
+          alt="Logo"
+          className="w-full max-w-md mx-auto"
+        />
+      </div>
 
-      {/* Content container */}
-      <div className="relative z-10 w-full max-w-md px-6 flex flex-col gap-4" style={{ marginTop: '200px' }}>
-        
-        {/* Player name input */}
-        <div className="w-full h-11 px-24 py-3.5 rounded-2xl border border-white flex justify-center items-center">
-          <input
-            type="text"
-            value={playerName}
-            onChange={(e) => setPlayerName(e.target.value)}
-            placeholder={language === 'chinese' ? '玩家１' : 'Player 1'}
-            className="grow shrink basis-0 self-stretch text-center text-white text-base bg-transparent border-none outline-none placeholder-white/70"
-          />
+      {/* Input and language button container */}
+      <div className="absolute left-0 right-0 bottom-0 z-10 px-6 pb-6 flex flex-col">
+        {/* Player name input and language button group */}
+        <div className="flex flex-col gap-4 mb-10">
+          {/* Player name input */}
+          <div className="w-full h-14 rounded-2xl border-2 border-white flex justify-center items-center bg-transparent">
+            <input
+              type="text"
+              value={playerName}
+              onChange={(e) => setPlayerName(e.target.value)}
+              placeholder={language === 'chinese' ? '玩家１' : 'Player 1'}
+              className="w-full text-center text-white text-base bg-transparent border-none outline-none placeholder-white/70 px-4"
+            />
+          </div>
+
+          {/* Language toggle button */}
+          <button
+            onClick={toggleLanguage}
+            className="w-full h-14 bg-transparent rounded-2xl border-2 border-white flex justify-center items-center hover:bg-white/10 transition-colors"
+          >
+            <div className="text-center text-white text-base">
+              {language === 'chinese' ? '語言: 中文' : 'Language: English'}
+            </div>
+          </button>
         </div>
 
-        {/* Language toggle button */}
-        <button
-          onClick={toggleLanguage}
-          className="w-full px-24 py-3.5 bg-blue-900 rounded-2xl border border-white flex justify-center items-center hover:bg-blue-800 transition-colors"
-        >
-          <div className="text-center text-white text-base">
-            {language === 'chinese' ? '語言: 中文' : 'Language: English'}
-          </div>
-        </button>
-
-        {/* Start game button */}
+        {/* Start game button - 40px gap from above, 24px from bottom */}
         <button
           onClick={startGame}
-          className="w-full h-11 rounded-2xl shadow-lg border border-white relative overflow-hidden hover:opacity-90 transition-opacity"
+          className="w-full h-14 rounded-2xl shadow-lg relative overflow-hidden hover:opacity-90 transition-opacity"
         >
-          <div className="w-full h-full absolute inset-0 bg-gradient-to-br from-orange-600 to-yellow-400" />
-          <div className="relative text-center text-black text-base font-bold">
+          <div className="w-full h-full absolute inset-0 bg-gradient-to-r from-orange-500 to-yellow-400" />
+          <div className="relative text-center text-black text-lg font-bold">
             {language === 'chinese' ? '開始Bingo!' : 'Start Bingo!'}
           </div>
         </button>
