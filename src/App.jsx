@@ -134,15 +134,29 @@ function HomePage({ onStartGame, language, setLanguage }) {
 }
 
 // Progress View Page Component
-function ProgressViewPage({ onBack, myProgress, language }) {
-  // Mock data for other players - in real app this would come from shared storage
+function ProgressViewPage({ onBack, progressData, language }) {
+  // Mock data for other players
   const otherPlayers = [
-    { name: language === 'chinese' ? '玩家１' : 'Player 1', progress: 60 },
-    { name: language === 'chinese' ? '玩家２' : 'Player 2', progress: 60 },
-    { name: language === 'chinese' ? '玩家３' : 'Player 3', progress: 60 },
-    { name: language === 'chinese' ? '玩家４' : 'Player 4', progress: 60 },
-    { name: language === 'chinese' ? '玩家５' : 'Player 5', progress: 60 },
+    { name: language === 'chinese' ? '玩家１' : 'Player 1', lines: 1, extraBoxes: 5, percentage: 45 },
+    { name: language === 'chinese' ? '玩家２' : 'Player 2', lines: 2, extraBoxes: 2, percentage: 73 },
+    { name: language === 'chinese' ? '玩家３' : 'Player 3', lines: 0, extraBoxes: 8, percentage: 17 },
+    { name: language === 'chinese' ? '玩家４' : 'Player 4', lines: 1, extraBoxes: 3, percentage: 40 },
+    { name: language === 'chinese' ? '玩家５' : 'Player 5', lines: 3, extraBoxes: 0, percentage: 100 },
   ];
+
+  const formatProgress = (lines, extraBoxes, lang) => {
+    if (lines === 0) {
+      return extraBoxes > 0 
+        ? (lang === 'chinese' ? `${extraBoxes}格` : `${extraBoxes} boxes`)
+        : (lang === 'chinese' ? '0條線' : '0 lines');
+    } else if (lines === 3) {
+      return lang === 'chinese' ? '3條線' : '3 lines';
+    } else {
+      return extraBoxes > 0
+        ? (lang === 'chinese' ? `${lines}條線+${extraBoxes}格` : `${lines} lines+${extraBoxes}`)
+        : (lang === 'chinese' ? `${lines}條線` : `${lines} lines`);
+    }
+  };
 
   return (
     <div className="w-full h-screen bg-blue-900 relative overflow-hidden">
@@ -172,13 +186,16 @@ function ProgressViewPage({ onBack, myProgress, language }) {
           <div className="text-black text-base font-bold mb-2">
             {language === 'chinese' ? '我的進度:' : 'My Progress:'}
           </div>
+          <div className="text-black text-sm mb-2">
+            {formatProgress(progressData.lines, progressData.extraBoxes, language)}
+          </div>
           <div className="relative w-full h-8 bg-white rounded-2xl border border-blue-900 overflow-hidden">
             <div 
               className="absolute left-0 top-0 h-full bg-yellow-400 rounded-2xl transition-all duration-300"
-              style={{ width: `${myProgress}%` }}
+              style={{ width: `${progressData.percentage}%` }}
             />
             <div className="absolute inset-0 flex items-center justify-center text-black text-base font-bold">
-              {myProgress}%
+              {progressData.percentage}%
             </div>
           </div>
         </div>
@@ -192,14 +209,19 @@ function ProgressViewPage({ onBack, myProgress, language }) {
           <div className="space-y-4">
             {otherPlayers.map((player, index) => (
               <div key={index}>
-                <div className="text-black text-base mb-1">{player.name}</div>
+                <div className="flex justify-between items-center mb-1">
+                  <div className="text-black text-base">{player.name}</div>
+                  <div className="text-black text-sm">
+                    {formatProgress(player.lines, player.extraBoxes, language)}
+                  </div>
+                </div>
                 <div className="relative w-full h-8 bg-white rounded-2xl border border-blue-900 overflow-hidden">
                   <div 
                     className="absolute left-0 top-0 h-full bg-yellow-400 rounded-2xl transition-all duration-300"
-                    style={{ width: `${player.progress}%` }}
+                    style={{ width: `${player.percentage}%` }}
                   />
                   <div className="absolute inset-0 flex items-center justify-center text-black text-base font-bold">
-                    {player.progress}%
+                    {player.percentage}%
                   </div>
                 </div>
               </div>
@@ -260,43 +282,60 @@ export default function App() {
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationStage, setCelebrationStage] = useState(0);
 
-// Calculate progress based on completed lines (3 lines = 100%)
-const calculateProgress = () => {
-  const finishedIndices = taskStates.map((state, idx) => state === 'finished' ? idx : -1).filter(idx => idx !== -1);
-  
-  let completedLines = 0;
-  
-  // Check rows
-  for (let row = 0; row < 4; row++) {
-    const rowIndices = [row * 4, row * 4 + 1, row * 4 + 2, row * 4 + 3];
-    if (rowIndices.every(idx => finishedIndices.includes(idx))) {
-      completedLines++;
+  // Calculate progress with lines and extra boxes
+  const calculateProgressWithLines = () => {
+    const finishedIndices = taskStates.map((state, idx) => state === 'finished' ? idx : -1).filter(idx => idx !== -1);
+    
+    let completedLines = 0;
+    const completedBoxIndices = new Set();
+    
+    // Check rows
+    for (let row = 0; row < 4; row++) {
+      const rowIndices = [row * 4, row * 4 + 1, row * 4 + 2, row * 4 + 3];
+      if (rowIndices.every(idx => finishedIndices.includes(idx))) {
+        completedLines++;
+        rowIndices.forEach(idx => completedBoxIndices.add(idx));
+      }
     }
-  }
-  
-  // Check columns
-  for (let col = 0; col < 4; col++) {
-    const colIndices = [col, col + 4, col + 8, col + 12];
-    if (colIndices.every(idx => finishedIndices.includes(idx))) {
-      completedLines++;
+    
+    // Check columns
+    for (let col = 0; col < 4; col++) {
+      const colIndices = [col, col + 4, col + 8, col + 12];
+      if (colIndices.every(idx => finishedIndices.includes(idx))) {
+        completedLines++;
+        colIndices.forEach(idx => completedBoxIndices.add(idx));
+      }
     }
-  }
-  
-  // Check diagonals
-  const diag1 = [0, 5, 10, 15];
-  const diag2 = [3, 6, 9, 12];
-  if (diag1.every(idx => finishedIndices.includes(idx))) {
-    completedLines++;
-  }
-  if (diag2.every(idx => finishedIndices.includes(idx))) {
-    completedLines++;
-  }
-  
-  // Calculate percentage: 3 lines = 100%
-  return Math.min(Math.round((completedLines / 3) * 100), 100);
-};
+    
+    // Check diagonals
+    const diag1 = [0, 5, 10, 15];
+    const diag2 = [3, 6, 9, 12];
+    if (diag1.every(idx => finishedIndices.includes(idx))) {
+      completedLines++;
+      diag1.forEach(idx => completedBoxIndices.add(idx));
+    }
+    if (diag2.every(idx => finishedIndices.includes(idx))) {
+      completedLines++;
+      diag2.forEach(idx => completedBoxIndices.add(idx));
+    }
+    
+    // Calculate extra boxes (finished boxes not in completed lines)
+    const extraBoxes = finishedIndices.filter(idx => !completedBoxIndices.has(idx)).length;
+    
+    // Calculate percentage for progress bar
+    // 3 lines = 100%, each line = 33.33%, extra boxes contribute proportionally
+    const lineProgress = (completedLines / 3) * 100;
+    const boxProgress = (extraBoxes / 16) * 33.33; // extra boxes can add up to 33.33%
+    const totalProgress = Math.min(lineProgress + boxProgress, 100);
+    
+    return {
+      lines: completedLines,
+      extraBoxes: extraBoxes,
+      percentage: Math.round(totalProgress)
+    };
+  };
 
-const myProgress = calculateProgress();
+  const progressData = calculateProgressWithLines();
 
   // Save task states to localStorage whenever they change
   useEffect(() => {
@@ -447,7 +486,7 @@ const myProgress = calculateProgress();
 
   // Show progress view page
   if (gameState === 'progress') {
-    return <ProgressViewPage onBack={handleBackToGame} myProgress={myProgress} language={language} />;
+    return <ProgressViewPage onBack={handleBackToGame} progressData={progressData} language={language} />;
   }
 
   // Celebration screen
