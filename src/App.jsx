@@ -27,20 +27,46 @@ const tasks = [
   "分享自己奇怪的興趣"
 ];
 
+// Shuffle function
+const shuffleArray = (array) => {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
 export default function App() {
-  // Shuffle tasks on component mount
+  // Get or create shuffled tasks from localStorage
   const [shuffledTasks] = useState(() => {
-    const shuffled = [...tasks];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    // Try to get saved tasks from localStorage
+    const savedTasks = localStorage.getItem('barHoppingTasks');
+    
+    if (savedTasks) {
+      // If tasks exist, use them
+      return JSON.parse(savedTasks);
+    } else {
+      // If no tasks exist, shuffle and save
+      const shuffled = shuffleArray(tasks);
+      localStorage.setItem('barHoppingTasks', JSON.stringify(shuffled));
+      return shuffled;
     }
-    return shuffled;
   });
   
-  const [taskStates, setTaskStates] = useState(Array(16).fill('default'));
+  // Get or create task states from localStorage
+  const [taskStates, setTaskStates] = useState(() => {
+    const savedStates = localStorage.getItem('barHoppingStates');
+    return savedStates ? JSON.parse(savedStates) : Array(16).fill('default');
+  });
+  
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationStage, setCelebrationStage] = useState(0);
+
+  // Save task states to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('barHoppingStates', JSON.stringify(taskStates));
+  }, [taskStates]);
 
   const checkForBingo = (states) => {
     const finishedIndices = states.map((state, idx) => state === 'finished' ? idx : -1).filter(idx => idx !== -1);
