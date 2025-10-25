@@ -228,15 +228,6 @@ function ProgressViewPage({ onBack, progressData, language }) {
             ))}
           </div>
         </div>
-
-        {/* Logo at bottom */}
-        <div className="mt-4">
-          <img 
-            src="https://i.imgur.com/2TtbhMD.png"
-            alt="Logo"
-            className="w-full max-w-md mx-auto"
-          />
-        </div>
       </div>
     </div>
   );
@@ -347,9 +338,24 @@ export default function App() {
     localStorage.setItem('barHoppingLanguage', language);
   }, [language]);
 
-  // Handle start game
+  // Handle start game with reset
   const handleStartGame = (name) => {
     setPlayerName(name);
+    
+    // Reset game when starting
+    localStorage.removeItem('barHoppingTasks');
+    localStorage.removeItem('barHoppingStates');
+    
+    // Shuffle tasks again
+    const newShuffled = shuffleArray(tasks);
+    localStorage.setItem('barHoppingTasks', JSON.stringify(newShuffled));
+    setShuffledTasks(newShuffled);
+    
+    // Reset all task states
+    const resetStates = Array(16).fill('default');
+    localStorage.setItem('barHoppingStates', JSON.stringify(resetStates));
+    setTaskStates(resetStates);
+    
     setGameState('playing');
   };
 
