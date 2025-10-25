@@ -56,7 +56,84 @@ const shuffleArray = (array) => {
   return shuffled;
 };
 
+// Home Page Component
+function HomePage({ onStartGame, language, setLanguage }) {
+  const [playerName, setPlayerName] = useState('');
+
+  const toggleLanguage = () => {
+    setLanguage(language === 'chinese' ? 'english' : 'chinese');
+  };
+
+  const startGame = () => {
+    if (playerName.trim()) {
+      onStartGame(playerName.trim());
+    } else {
+      alert(language === 'chinese' ? '請輸入玩家名稱' : 'Please enter player name');
+    }
+  };
+
+  return (
+    <div className="w-full h-screen bg-blue-900 relative overflow-hidden flex items-center justify-center">
+      {/* Background image - top */}
+      <img 
+        src="https://i.imgur.com/W0XrIS3.png"
+        alt="Background Top"
+        className="w-full h-auto absolute top-0 left-0 object-cover"
+        style={{ maxHeight: '50%' }}
+      />
+
+      {/* Logo */}
+      <img 
+        src="https://i.imgur.com/2TtbhMD.png"
+        alt="Logo"
+        className="w-full max-w-md absolute top-80 left-1/2 transform -translate-x-1/2 px-4"
+      />
+
+      {/* Content container */}
+      <div className="relative z-10 w-full max-w-md px-6 flex flex-col gap-4" style={{ marginTop: '200px' }}>
+        
+        {/* Player name input */}
+        <div className="w-full h-11 px-24 py-3.5 rounded-2xl border border-white flex justify-center items-center">
+          <input
+            type="text"
+            value={playerName}
+            onChange={(e) => setPlayerName(e.target.value)}
+            placeholder={language === 'chinese' ? '玩家１' : 'Player 1'}
+            className="grow shrink basis-0 self-stretch text-center text-white text-base bg-transparent border-none outline-none placeholder-white/70"
+          />
+        </div>
+
+        {/* Language toggle button */}
+        <button
+          onClick={toggleLanguage}
+          className="w-full px-24 py-3.5 bg-blue-900 rounded-2xl border border-white flex justify-center items-center hover:bg-blue-800 transition-colors"
+        >
+          <div className="text-center text-white text-base">
+            {language === 'chinese' ? '語言: 中文' : 'Language: English'}
+          </div>
+        </button>
+
+        {/* Start game button */}
+        <button
+          onClick={startGame}
+          className="w-full h-11 rounded-2xl shadow-lg border border-white relative overflow-hidden hover:opacity-90 transition-opacity"
+        >
+          <div className="w-full h-full absolute inset-0 bg-gradient-to-br from-orange-600 to-yellow-400" />
+          <div className="relative text-center text-black text-base font-bold">
+            {language === 'chinese' ? '開始Bingo!' : 'Start Bingo!'}
+          </div>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Main App Component
 export default function App() {
+  // Game state: 'home' or 'playing'
+  const [gameState, setGameState] = useState('home');
+  const [playerName, setPlayerName] = useState('');
+
   // Language state
   const [language, setLanguage] = useState(() => {
     return localStorage.getItem('barHoppingLanguage') || 'chinese';
@@ -67,14 +144,11 @@ export default function App() {
 
   // Get or create shuffled tasks from localStorage
   const [shuffledTasks, setShuffledTasks] = useState(() => {
-    // Try to get saved tasks from localStorage
     const savedTasks = localStorage.getItem('barHoppingTasks');
     
     if (savedTasks) {
-      // If tasks exist, use them
       return JSON.parse(savedTasks);
     } else {
-      // If no tasks exist, shuffle and save
       const shuffled = shuffleArray(tasks);
       localStorage.setItem('barHoppingTasks', JSON.stringify(shuffled));
       return shuffled;
@@ -86,7 +160,6 @@ export default function App() {
     const savedStates = localStorage.getItem('barHoppingStates');
     if (savedStates) {
       const states = JSON.parse(savedStates);
-      // Fix any stuck "clicking" states on load
       return states.map(state => state === 'clicking' ? 'default' : state);
     }
     return Array(16).fill('default');
@@ -104,6 +177,12 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('barHoppingLanguage', language);
   }, [language]);
+
+  // Handle start game
+  const handleStartGame = (name) => {
+    setPlayerName(name);
+    setGameState('playing');
+  };
 
   // Toggle language and update tasks
   const toggleLanguage = () => {
@@ -221,6 +300,12 @@ export default function App() {
     }
   }, [showCelebration, celebrationStage]);
 
+  // Show home page if game hasn't started
+  if (gameState === 'home') {
+    return <HomePage onStartGame={handleStartGame} language={language} setLanguage={setLanguage} />;
+  }
+
+  // Celebration screen
   if (showCelebration) {
     return (
       <div className="w-full h-screen bg-blue-900 relative overflow-hidden flex items-center justify-center">
@@ -272,6 +357,7 @@ export default function App() {
     );
   }
 
+  // Game screen
   return (
     <div className="w-full min-h-screen bg-blue-900 relative overflow-hidden">
       {/* Full screen background image */}
@@ -300,6 +386,13 @@ export default function App() {
         {/* White background container - extended top to overlap with logo */}
         <div className="bg-white/95 rounded-2xl pt-32 px-4 pb-4 shadow-2xl w-full max-w-md mx-auto">
           
+          {/* Player name display */}
+          <div className="mb-4 text-center">
+            <div className="text-sm font-bold text-gray-700">
+              {language === 'chinese' ? '玩家' : 'Player'}: {playerName}
+            </div>
+          </div>
+
           {/* 4x4 Grid with min-width 64px and dynamic sizing */}
           <div className="flex flex-col gap-3">
             {[0, 1, 2, 3].map((row) => (
