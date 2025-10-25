@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
+// BeerIcon Component
 const BeerIcon = ({ stage }) => (
   <img 
     src={stage === 'clicking' ? "https://i.imgur.com/pz5ZsvU.png" : "https://i.imgur.com/ewmSdfo.png"} 
@@ -8,6 +9,7 @@ const BeerIcon = ({ stage }) => (
   />
 );
 
+// Task Lists
 const tasksChinese = [
   "用一種動物形容自己",
   "喝完一杯１公升的Laternchen",
@@ -118,7 +120,7 @@ function HomePage({ onStartGame, language, setLanguage }) {
           </button>
         </div>
 
-        {/* Start game button - 40px gap from above, 24px from bottom */}
+        {/* Start game button */}
         <button
           onClick={startGame}
           className="w-full h-14 rounded-2xl shadow-lg relative overflow-hidden hover:opacity-90 transition-opacity"
@@ -144,15 +146,13 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
       const result = await window.storage.list('bingo_player:', true);
       if (result && result.keys) {
         const playersData = [];
-        const oneHourAgo = Date.now() - (60 * 60 * 1000); // 1 hour in milliseconds
+        const oneHourAgo = Date.now() - (60 * 60 * 1000);
         
         for (const key of result.keys) {
           try {
             const data = await window.storage.get(key, true);
             if (data && data.value) {
               const playerData = JSON.parse(data.value);
-              
-              // Only include players updated within last hour
               if (playerData.timestamp > oneHourAgo) {
                 playersData.push(playerData);
               }
@@ -162,7 +162,6 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
           }
         }
         
-        // Sort by progress (lines first, then extra boxes)
         playersData.sort((a, b) => {
           if (b.lines !== a.lines) return b.lines - a.lines;
           return b.extraBoxes - a.extraBoxes;
@@ -179,7 +178,6 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
 
   useEffect(() => {
     loadAllPlayers();
-    // Refresh every 5 seconds
     const interval = setInterval(loadAllPlayers, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -320,7 +318,7 @@ export default function App() {
     }
   });
 
-  // Get or create task states from localStorage
+  // Get or create task states from localStorage - fix stuck "clicking" states
   const [taskStates, setTaskStates] = useState(() => {
     const savedStates = localStorage.getItem('barHoppingStates');
     if (savedStates) {
@@ -339,11 +337,64 @@ export default function App() {
     localStorage.setItem('barHoppingPlayerName', playerName);
   }, [gameState, playerName]);
 
-  // ... (calculateProgressWithLines 函數保持不變)
+  // Calculate progress with lines and extra boxes
+  const calculateProgressWithLines = () => {
+    const finishedIndices = taskStates.map((state, idx) => state === 'finished' ? idx : -1).filter(idx => idx !== -1);
+    
+    let completedLines = 0;
+    const completedBoxIndices = new Set();
+    
+    // Check rows
+    for (let row = 0; row < 4; row++) {
+      const rowIndices = [row * 4, row * 4 + 1, row * 4 + 2, row * 4 + 3];
+      if (rowIndices.every(idx => finishedIndices.includes(idx))) {
+        completedLines++;
+        rowIndices.forEach(idx => completedBoxIndices.add(idx));
+      }
+    }
+    
+    // Check columns
+    for (let col = 0; col < 4; col++) {
+      const colIndices = [col, col + 4, col + 8, col + 12];
+      if (colIndices.every(idx => finishedIndices.includes(idx))) {
+        completedLines++;
+        colIndices.forEach(idx => completedBoxIndices.add(idx));
+      }
+    }
+    
+    // Check diagonals
+    const diag1 = [0, 5, 10, 15];
+    const diag2 = [3, 6, 9, 12];
+    if (diag1.every(idx => finishedIndices.includes(idx))) {
+      completedLines++;
+      diag1.forEach(idx => completedBoxIndices.add(idx));
+    }
+    if (diag2.every(idx => finishedIndices.includes(idx))) {
+      completedLines++;
+      diag2.forEach(idx => completedBoxIndices.add(idx));
+    }
+    
+    // Calculate extra boxes
+    const extraBoxes = finishedIndices.filter(idx => !completedBoxIndices.has(idx)).length;
+    
+    // Calculate percentage for progress bar
+    const lineProgress = (completedLines / 3) * 100;
+    const boxProgress = (extraBoxes / 16) * 33.33;
+    const totalProgress = Math.min(lineProgress + boxProgress, 100);
+    
+    return {
+      lines: completedLines,
+      extraBoxes: extraBoxes,
+      percentage: Math.round(totalProgress)
+    };
+  };
+
+  const progressData = calculateProgressWithLines();
 
   // Save player data to shared storage
   const savePlayerData = async () => {
     if (!playerName) return;
+    
     try {
       const playerData = {
         playerName,
@@ -352,6 +403,7 @@ export default function App() {
         percentage: progressData.percentage,
         timestamp: Date.now()
       };
+      
       const key = `bingo_player:${playerName}`;
       await window.storage.set(key, JSON.stringify(playerData), true);
     } catch (error) {
@@ -375,7 +427,6 @@ export default function App() {
   // Handle start game with reset
   const handleStartGame = (name) => {
     setPlayerName(name);
-    // Reset game when starting
     localStorage.removeItem('barHoppingTasks');
     localStorage.removeItem('barHoppingStates');
     const newShuffled = shuffleArray(tasks);
@@ -407,7 +458,68 @@ export default function App() {
     setShuffledTasks(newShuffled);
   };
 
-  // ... (checkForBingo 和 handleTaskClick 函數保持不變)
+  const checkForBingo = (states) => {
+    const finishedIndices = states.map((state, idx) => state === 'finished' ? idx : -1).filter(idx => idx !== -1);
+    
+    let completedLines = 0;
+    
+    for (let row = 0; row < 4; row++) {
+      const rowIndices = [row * 4, row * 4 + 1, row * 4 + 2, row * 4 + 3];
+      if (rowIndices.every(idx => finishedIndices.includes(idx))) {
+        completedLines++;
+      }
+    }
+    
+    for (let col = 0; col < 4; col++) {
+      const colIndices = [col, col + 4, col + 8, col + 12];
+      if (colIndices.every(idx => finishedIndices.includes(idx))) {
+        completedLines++;
+      }
+    }
+    
+    const diag1 = [0, 5, 10, 15];
+    const diag2 = [3, 6, 9, 12];
+    if (diag1.every(idx => finishedIndices.includes(idx))) {
+      completedLines++;
+    }
+    if (diag2.every(idx => finishedIndices.includes(idx))) {
+      completedLines++;
+    }
+    
+    return completedLines >= 3;
+  };
+
+  const handleTaskClick = (index) => {
+    const currentState = taskStates[index];
+    
+    if (currentState === 'default') {
+      const newStates = [...taskStates];
+      newStates[index] = 'clicking';
+      setTaskStates(newStates);
+      
+      const timer = setTimeout(() => {
+        setTaskStates(prevStates => {
+          const updatedStates = [...prevStates];
+          updatedStates[index] = 'finished';
+          
+          if (checkForBingo(updatedStates)) {
+            setTimeout(() => {
+              setShowCelebration(true);
+              setCelebrationStage(0);
+            }, 300);
+          }
+          
+          return updatedStates;
+        });
+      }, 500);
+
+      return () => clearTimeout(timer);
+    } else if (currentState === 'finished' || currentState === 'clicking') {
+      const newStates = [...taskStates];
+      newStates[index] = 'default';
+      setTaskStates(newStates);
+    }
+  };
 
   const handleReset = () => {
     // 清空 localStorage
@@ -431,7 +543,15 @@ export default function App() {
     setCelebrationStage(0);
   };
 
-  // ... (useEffect for celebration 保持不變)
+  useEffect(() => {
+    if (showCelebration) {
+      if (celebrationStage === 0) {
+        setTimeout(() => setCelebrationStage(1), 500);
+      } else if (celebrationStage === 1) {
+        setTimeout(() => setCelebrationStage(2), 800);
+      }
+    }
+  }, [showCelebration, celebrationStage]);
 
   // Show home page if game hasn't started or reset
   if (gameState === 'home') {
