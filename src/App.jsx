@@ -177,48 +177,44 @@ export default function App() {
 
   if (showCelebration) {
     return (
-      <div className="w-full h-screen bg-blue-900 relative overflow-hidden flex flex-col">
+      <div className="w-full h-screen bg-blue-900 relative overflow-hidden flex items-center justify-center">
         {/* Background image */}
         <div className="absolute inset-0 bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500"></div>
         
-        {/* Logo at top - fixed height */}
-        <div className="relative z-20 w-full px-4 pt-4 flex-shrink-0">
-          <div className="max-w-sm mx-auto">
-            <img 
-              src="https://i.imgur.com/2TtbhMD.png" 
-              alt="Logo"
-              className="w-full h-auto"
-            />
-          </div>
+        {/* Logo at top - stays within screen */}
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 max-w-xs w-full px-4">
+          <img 
+            src="https://i.imgur.com/2TtbhMD.png" 
+            alt="Logo"
+            className="w-full h-auto"
+          />
         </div>
 
-        {/* Close button */}
+        {/* Celebration beer king - can overflow screen */}
+        <div 
+          className="relative z-10 transition-all duration-1000 ease-out"
+          style={{
+            transform: `scale(${celebrationStage === 0 ? 0.5 : celebrationStage === 1 ? 1.5 : 2.5}) rotate(${celebrationStage * 180}deg)`,
+            opacity: celebrationStage === 0 ? 0.5 : 1
+          }}
+        >
+          <img 
+            src="https://i.imgur.com/cIJ8iBP.png"
+            alt="Beer King"
+            className="w-80 h-80 object-contain"
+          />
+        </div>
+
+        {/* Close button - stays within screen */}
         <button
           onClick={() => setShowCelebration(false)}
-          className="absolute top-4 right-4 z-30 bg-white text-gray-800 px-6 py-3 rounded-full font-bold hover:bg-gray-100 transition-colors"
+          className="absolute top-4 right-4 z-30 bg-white text-gray-800 px-4 py-2 rounded-full font-bold hover:bg-gray-100 transition-colors text-sm"
         >
           關閉
         </button>
 
-        {/* Celebration beer king - flexible middle section */}
-        <div className="relative z-10 flex-1 flex items-center justify-center px-4 py-4 min-h-0">
-          <div 
-            className="transition-all duration-1000 ease-out max-w-md w-full"
-            style={{
-              transform: `scale(${celebrationStage === 0 ? 0.5 : celebrationStage === 1 ? 0.8 : 1}) rotate(${celebrationStage * 180}deg)`,
-              opacity: celebrationStage === 0 ? 0.5 : 1
-            }}
-          >
-            <img 
-              src="https://i.imgur.com/cIJ8iBP.png"
-              alt="Beer King"
-              className="w-full h-auto object-contain"
-            />
-          </div>
-        </div>
-
-        {/* Reset button at bottom - fixed height */}
-        <div className="relative z-30 px-6 pb-6 flex-shrink-0">
+        {/* Reset button at bottom - stays within screen with safe area */}
+        <div className="absolute bottom-0 left-0 right-0 z-30 px-6 pb-6">
           <button
             onClick={handleReset}
             className="w-full h-8 bg-white text-black border-2 border-black font-bold rounded-lg hover:bg-gray-100 transition-colors"
