@@ -295,11 +295,6 @@ export default function App() {
         />
       </button>
 
-      {/* Language indicator */}
-      <div className="absolute top-2 right-5 z-30 bg-white/90 px-3 py-1 rounded-full text-xs font-bold">
-        {language === 'chinese' ? '中文' : 'EN'}
-      </div>
-
       {/* Main content */}
       <div className="relative z-10 px-5 pt-32 pb-8 min-h-screen">
         {/* White background container - extended top to overlap with logo */}
