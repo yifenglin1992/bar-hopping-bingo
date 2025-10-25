@@ -8,7 +8,7 @@ const BeerIcon = ({ stage }) => (
   />
 );
 
-const tasks = [
+const tasksChinese = [
   "用一種動物形容自己",
   "喝完一杯１公升的Laternchen",
   "用「喝酒風格」形容自己（慢品型 / 狂嗨型 / 文青型）",
@@ -27,6 +27,25 @@ const tasks = [
   "分享自己奇怪的興趣"
 ];
 
+const tasksEnglish = [
+  "Describe yourself as an animal",
+  "Finish a 1-liter Laternchen",
+  "Describe your drinking style (Sipper / Party Animal / Hipster)",
+  "Take the most attractive photo of someone",
+  "Let someone choose your next drink",
+  "Share your special talent with everyone",
+  "Introduce yourself (How long here, what brings you...)",
+  "Order an Aperol Spritz",
+  "Share what you did last weekend",
+  "Finish a Long Drink",
+  "Cheers with a stranger",
+  "Take a selfie with your drink",
+  "Find someone for a funny pose with drinks",
+  "Find someone tipsy tonight and take a photo",
+  "Order a special shot at Kessel",
+  "Share your weird hobby"
+];
+
 // Shuffle function
 const shuffleArray = (array) => {
   const shuffled = [...array];
@@ -38,6 +57,14 @@ const shuffleArray = (array) => {
 };
 
 export default function App() {
+  // Language state
+  const [language, setLanguage] = useState(() => {
+    return localStorage.getItem('barHoppingLanguage') || 'chinese';
+  });
+
+  // Get current tasks based on language
+  const tasks = language === 'chinese' ? tasksChinese : tasksEnglish;
+
   // Get or create shuffled tasks from localStorage
   const [shuffledTasks, setShuffledTasks] = useState(() => {
     // Try to get saved tasks from localStorage
@@ -72,6 +99,25 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('barHoppingStates', JSON.stringify(taskStates));
   }, [taskStates]);
+
+  // Save language preference
+  useEffect(() => {
+    localStorage.setItem('barHoppingLanguage', language);
+  }, [language]);
+
+  // Toggle language and update tasks
+  const toggleLanguage = () => {
+    const newLanguage = language === 'chinese' ? 'english' : 'chinese';
+    setLanguage(newLanguage);
+    
+    // Get the new task list
+    const newTasks = newLanguage === 'chinese' ? tasksChinese : tasksEnglish;
+    
+    // Re-shuffle with new language
+    const newShuffled = shuffleArray(newTasks);
+    localStorage.setItem('barHoppingTasks', JSON.stringify(newShuffled));
+    setShuffledTasks(newShuffled);
+  };
 
   const checkForBingo = (states) => {
     const finishedIndices = states.map((state, idx) => state === 'finished' ? idx : -1).filter(idx => idx !== -1);
@@ -210,7 +256,7 @@ export default function App() {
           onClick={() => setShowCelebration(false)}
           className="absolute top-4 right-4 z-30 bg-white text-gray-800 px-4 py-2 rounded-full font-bold hover:bg-gray-100 transition-colors text-sm"
         >
-          關閉
+          {language === 'chinese' ? '關閉' : 'Close'}
         </button>
 
         {/* Reset button at bottom - stays within screen with safe area */}
@@ -219,7 +265,7 @@ export default function App() {
             onClick={handleReset}
             className="w-full h-8 bg-white text-black border-2 border-black font-bold rounded-lg hover:bg-gray-100 transition-colors"
           >
-            重置順序
+            {language === 'chinese' ? '重置順序' : 'Reset Order'}
           </button>
         </div>
       </div>
@@ -237,13 +283,21 @@ export default function App() {
         />
       </div>
 
-      {/* Logo - positioned at top with 20px margin on both sides */}
-      <div className="absolute top-8 left-5 right-5 z-20">
+      {/* Logo - clickable to toggle language */}
+      <button 
+        onClick={toggleLanguage}
+        className="absolute top-8 left-5 right-5 z-20 cursor-pointer hover:opacity-80 transition-opacity"
+      >
         <img 
           src="https://i.imgur.com/2TtbhMD.png"
           alt="Logo"
           className="w-full h-auto drop-shadow-2xl"
         />
+      </button>
+
+      {/* Language indicator */}
+      <div className="absolute top-2 right-5 z-30 bg-white/90 px-3 py-1 rounded-full text-xs font-bold">
+        {language === 'chinese' ? '中文' : 'EN'}
       </div>
 
       {/* Main content */}
