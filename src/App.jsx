@@ -54,10 +54,15 @@ export default function App() {
     }
   });
   
-  // Get or create task states from localStorage
+  // Get or create task states from localStorage - fix stuck "clicking" states
   const [taskStates, setTaskStates] = useState(() => {
     const savedStates = localStorage.getItem('barHoppingStates');
-    return savedStates ? JSON.parse(savedStates) : Array(16).fill('default');
+    if (savedStates) {
+      const states = JSON.parse(savedStates);
+      // Fix any stuck "clicking" states on load
+      return states.map(state => state === 'clicking' ? 'default' : state);
+    }
+    return Array(16).fill('default');
   });
   
   const [showCelebration, setShowCelebration] = useState(false);
@@ -113,21 +118,27 @@ export default function App() {
       setTaskStates(newStates);
       
       // After 500ms, change to finished with icon 2
-      setTimeout(() => {
-        const updatedStates = [...taskStates];
-        updatedStates[index] = 'finished';
-        setTaskStates(updatedStates);
-        
-        // Check for bingo
-        if (checkForBingo(updatedStates)) {
-          setTimeout(() => {
-            setShowCelebration(true);
-            setCelebrationStage(0);
-          }, 300);
-        }
+      const timer = setTimeout(() => {
+        setTaskStates(prevStates => {
+          const updatedStates = [...prevStates];
+          updatedStates[index] = 'finished';
+          
+          // Check for bingo after state update
+          if (checkForBingo(updatedStates)) {
+            setTimeout(() => {
+              setShowCelebration(true);
+              setCelebrationStage(0);
+            }, 300);
+          }
+          
+          return updatedStates;
+        });
       }, 500);
-    } else if (currentState === 'finished') {
-      // Reset to default
+
+      // Store timer to clean up if needed
+      return () => clearTimeout(timer);
+    } else if (currentState === 'finished' || currentState === 'clicking') {
+      // Reset to default (allow reset even if stuck in clicking)
       const newStates = [...taskStates];
       newStates[index] = 'default';
       setTaskStates(newStates);
