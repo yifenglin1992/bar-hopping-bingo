@@ -137,14 +137,31 @@ function HomePage({ onStartGame, language, setLanguage }) {
 function ProgressViewPage({ onBack, progressData, language, playerName }) {
   const [allPlayers, setAllPlayers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [debugInfo, setDebugInfo] = useState('');
+
+  // Calculate percentage for progress bar
+  const calculatePercentage = (lines, extraBoxes) => {
+    const totalBoxes = (lines * 4) + extraBoxes;
+    return Math.round((totalBoxes / 16) * 100);
+  };
 
   // Load all players data
   const loadAllPlayers = async () => {
     try {
+      // 檢查 window.storage 是否存在
+      if (!window.storage) {
+        setDebugInfo('❌ window.storage API 不存在');
+        setIsLoading(false);
+        return;
+      }
+
+      setDebugInfo('✅ 正在讀取共享儲存...');
       const result = await window.storage.list('bingo_player:', true);
+      
       if (result && result.keys) {
+        setDebugInfo(`✅ 找到 ${result.keys.length} 個玩家資料`);
         const playersData = [];
-        const oneHourAgo = Date.now() - (60 * 60 * 1000); // 1 hour in milliseconds
+        const oneHourAgo = Date.now() - (60 * 60 * 1000);
         
         for (const key of result.keys) {
           try {
@@ -152,8 +169,9 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
             if (data && data.value) {
               const playerData = JSON.parse(data.value);
               
-              // Only include players updated within last hour
               if (playerData.timestamp > oneHourAgo) {
+                // Add percentage to player data
+                playerData.percentage = calculatePercentage(playerData.lines, playerData.extraBoxes);
                 playersData.push(playerData);
               }
             }
@@ -162,16 +180,21 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
           }
         }
         
-        // Sort by progress (lines first, then extra boxes)
         playersData.sort((a, b) => {
           if (b.lines !== a.lines) return b.lines - a.lines;
           return b.extraBoxes - a.extraBoxes;
         });
         
         setAllPlayers(playersData);
+        if (playersData.length === 0) {
+          setDebugInfo('⚠️ 所有玩家資料都超過1小時');
+        }
+      } else {
+        setDebugInfo('⚠️ 沒有找到任何玩家資料');
       }
     } catch (error) {
-      console.log('Storage not available or error:', error);
+      setDebugInfo(`❌ 錯誤: ${error.message}`);
+      console.log('Storage error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -221,23 +244,37 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
 
       {/* Content container */}
       <div className="relative z-10 px-4 pt-20 pb-8 h-full overflow-y-auto">
+        {/* Debug Info - 診斷資訊 */}
+        {debugInfo && (
+          <div className="bg-blue-100 border border-blue-400 rounded-lg p-3 mb-4 text-sm">
+            <div className="font-mono text-blue-800">{debugInfo}</div>
+          </div>
+        )}
+
         {/* My Progress Card */}
         <div className="bg-white/95 rounded-2xl p-4 mb-4">
           <div className="text-black text-base font-bold mb-2">
             {language === 'chinese' ? '我的進度:' : 'My Progress:'}
           </div>
-          <div className="flex items-center justify-between">
-            <div className="text-black text-2xl font-bold">{playerName}</div>
-            <div className="text-black text-xl font-bold">
-              {formatProgress(progressData.lines, progressData.extraBoxes, language)}
+          <div className="text-black text-2xl font-bold mb-2">{playerName}</div>
+          <div className="text-black text-sm mb-2">
+            {formatProgress(progressData.lines, progressData.extraBoxes, language)}
+          </div>
+          <div className="relative w-full h-8 bg-white rounded-2xl border border-blue-900 overflow-hidden">
+            <div 
+              className="absolute left-0 top-0 h-full bg-yellow-400 rounded-2xl transition-all duration-300"
+              style={{ width: `${calculatePercentage(progressData.lines, progressData.extraBoxes)}%` }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center text-black text-base font-bold">
+              {calculatePercentage(progressData.lines, progressData.extraBoxes)}%
             </div>
           </div>
         </div>
 
-        {/* All Players Progress */}
-        <div className="bg-white/95 rounded-2xl p-4">
-          <div className="text-black text-base font-bold mb-3">
-            {language === 'chinese' ? '所有玩家:' : 'All Players:'}
+        {/* Other Players Progress Card */}
+        <div className="bg-white/95 rounded-2xl p-4 mb-4">
+          <div className="text-black text-base font-bold mb-4">
+            {language === 'chinese' ? '其他玩家進度:' : 'Other Players Progress:'}
           </div>
           
           {isLoading ? (
@@ -249,23 +286,31 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
               {language === 'chinese' ? '目前沒有其他玩家' : 'No other players yet'}
             </div>
           ) : (
-            <div className="space-y-2">
-              {allPlayers.map((player, index) => (
-                <div 
-                  key={index}
-                  className={`flex items-center justify-between p-3 rounded-lg ${
-                    player.playerName === playerName ? 'bg-yellow-100' : 'bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="text-gray-600 font-bold">#{index + 1}</div>
-                    <div className="text-black font-medium">{player.playerName}</div>
+            <div className="space-y-4">
+              {allPlayers.map((player, index) => {
+                const isMe = player.playerName === playerName;
+                return (
+                  <div key={index}>
+                    <div className="flex justify-between items-center mb-1">
+                      <div className={`text-black text-base ${isMe ? 'font-bold' : ''}`}>
+                        {player.playerName} {isMe && (language === 'chinese' ? '(你)' : '(You)')}
+                      </div>
+                      <div className="text-black text-sm">
+                        {formatProgress(player.lines, player.extraBoxes, language)}
+                      </div>
+                    </div>
+                    <div className="relative w-full h-8 bg-white rounded-2xl border border-blue-900 overflow-hidden">
+                      <div 
+                        className="absolute left-0 top-0 h-full bg-yellow-400 rounded-2xl transition-all duration-300"
+                        style={{ width: `${player.percentage}%` }}
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center text-black text-base font-bold">
+                        {player.percentage}%
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-black font-bold">
-                    {formatProgress(player.lines, player.extraBoxes, language)}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
