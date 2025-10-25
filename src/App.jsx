@@ -39,7 +39,7 @@ const shuffleArray = (array) => {
 
 export default function App() {
   // Get or create shuffled tasks from localStorage
-  const [shuffledTasks] = useState(() => {
+  const [shuffledTasks, setShuffledTasks] = useState(() => {
     // Try to get saved tasks from localStorage
     const savedTasks = localStorage.getItem('barHoppingTasks');
     
@@ -134,6 +134,26 @@ export default function App() {
     }
   };
 
+  const handleReset = () => {
+    // Clear localStorage
+    localStorage.removeItem('barHoppingTasks');
+    localStorage.removeItem('barHoppingStates');
+    
+    // Shuffle tasks again
+    const newShuffled = shuffleArray(tasks);
+    localStorage.setItem('barHoppingTasks', JSON.stringify(newShuffled));
+    setShuffledTasks(newShuffled);
+    
+    // Reset all task states
+    const resetStates = Array(16).fill('default');
+    localStorage.setItem('barHoppingStates', JSON.stringify(resetStates));
+    setTaskStates(resetStates);
+    
+    // Close celebration
+    setShowCelebration(false);
+    setCelebrationStage(0);
+  };
+
   useEffect(() => {
     if (showCelebration) {
       if (celebrationStage === 0) {
@@ -180,6 +200,14 @@ export default function App() {
           className="absolute top-4 right-4 z-30 bg-white text-gray-800 px-6 py-3 rounded-full font-bold hover:bg-gray-100 transition-colors"
         >
           關閉
+        </button>
+
+        {/* Reset button at bottom */}
+        <button
+          onClick={handleReset}
+          className="absolute bottom-6 left-6 right-6 z-30 h-8 bg-white text-black border-2 border-black font-bold rounded-lg hover:bg-gray-100 transition-colors"
+        >
+          重置順序
         </button>
       </div>
     );
