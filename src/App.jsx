@@ -416,3 +416,117 @@ export default function App() {
     localStorage.removeItem('barHoppingStates');
     localStorage.removeItem('bingo_player:' + playerName);
     const newShuffled = shuffleArray(tasks);
+    localStorage.setItem('barHoppingTasks', JSON.stringify(newShuffled));
+    setShuffledTasks(newShuffled);
+    const resetStates = Array(16).fill('default');
+    localStorage.setItem('barHoppingStates', JSON.stringify(resetStates));
+    setTaskStates(resetStates);
+    setShowCelebration(false);
+    setCelebrationStage(0);
+  };
+
+  // 慶祝動畫控制
+  useEffect(() => {
+    if (!showCelebration) return;
+    const timer = setInterval(() => {
+      setCelebrationStage(prev => (prev < 3 ? prev + 1 : prev));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [showCelebration]);
+
+  // ------------------- Render -------------------
+
+  // 首頁
+  if (gameState === 'home') {
+    return (
+      <HomePage 
+        onStartGame={handleStartGame}
+        language={language}
+        setLanguage={setLanguage}
+      />
+    );
+  }
+
+  // 排行頁面
+  if (gameState === 'progress') {
+    return (
+      <ProgressViewPage
+        onBack={handleBackToGame}
+        progressData={progressData}
+        language={language}
+        playerName={playerName}
+      />
+    );
+  }
+
+  // 慶祝畫面
+  if (showCelebration) {
+    return (
+      <div className="w-full h-screen bg-yellow-400 flex flex-col items-center justify-center text-black text-center relative overflow-hidden">
+        <div className="text-5xl font-bold mb-8 animate-bounce">🎉</div>
+        <div className="text-3xl font-bold mb-4">
+          {language === 'chinese' ? '恭喜完成任務!' : 'Bingo Complete!'}
+        </div>
+        <div className="text-xl mb-6">
+          {language === 'chinese' ? '你太棒了！🥂' : 'You did amazing! 🥂'}
+        </div>
+
+        <div className="w-32 h-32 mb-6">
+          <BeerIcon stage="clicking" />
+        </div>
+
+        <div className="flex flex-col gap-3 w-56">
+          <button
+            onClick={() => {
+              handleReset();
+              setGameState('home'); // ✅ 回首頁
+            }}
+            className="w-full h-10 bg-white text-black border-2 border-black font-bold rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            {language === 'chinese' ? '重新開始遊戲' : 'Restart Game'}
+          </button>
+
+          <button
+            onClick={() => setShowCelebration(false)}
+            className="w-full h-10 bg-black text-white font-bold rounded-lg hover:bg-gray-800 transition-colors"
+          >
+            {language === 'chinese' ? '返回Bingo' : 'Back to Bingo'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 遊戲畫面
+  return (
+    <div className="w-full min-h-screen bg-yellow-400 relative overflow-hidden pb-4">
+      <button
+        onClick={handleViewProgress}
+        className="absolute top-8 right-4 z-30 w-12 h-12 bg-indigo-700 rounded-full shadow flex items-center justify-center hover:bg-indigo-600 transition-colors"
+      >
+        <img 
+          src="https://i.imgur.com/wo6QRa2.png" 
+          alt="Progress Icon" 
+          className="w-6 h-6"
+        />
+      </button>
+
+      <div className="p-4 pt-20 grid grid-cols-4 gap-3">
+        {shuffledTasks.map((task, index) => (
+          <div
+            key={index}
+            onClick={() => handleTaskClick(index)}
+            className={`
+              aspect-square rounded-2xl flex items-center justify-center text-center text-sm font-medium p-2 cursor-pointer
+              ${taskStates[index] === 'default' ? 'bg-white text-black border-2 border-black' : ''}
+              ${taskStates[index] === 'clicking' ? 'bg-blue-500 text-white animate-pulse' : ''}
+              ${taskStates[index] === 'finished' ? 'bg-yellow-500 text-black font-bold' : ''}
+            `}
+          >
+            {task}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
