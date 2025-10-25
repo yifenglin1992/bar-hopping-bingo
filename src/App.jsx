@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
+// BeerIcon Component
 const BeerIcon = ({ stage }) => (
   <img 
     src={stage === 'clicking' ? "https://i.imgur.com/pz5ZsvU.png" : "https://i.imgur.com/ewmSdfo.png"} 
@@ -8,6 +9,7 @@ const BeerIcon = ({ stage }) => (
   />
 );
 
+// Task Lists
 const tasksChinese = [
   "用一種動物形容自己",
   "喝完一杯１公升的Laternchen",
@@ -118,7 +120,7 @@ function HomePage({ onStartGame, language, setLanguage }) {
           </button>
         </div>
 
-        {/* Start game button - 40px gap from above, 24px from bottom */}
+        {/* Start game button */}
         <button
           onClick={startGame}
           className="w-full h-14 rounded-2xl shadow-lg relative overflow-hidden hover:opacity-90 transition-opacity"
@@ -137,29 +139,12 @@ function HomePage({ onStartGame, language, setLanguage }) {
 function ProgressViewPage({ onBack, progressData, language, playerName }) {
   const [allPlayers, setAllPlayers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [debugInfo, setDebugInfo] = useState('');
-
-  // Calculate percentage for progress bar
-  const calculatePercentage = (lines, extraBoxes) => {
-    const totalBoxes = (lines * 4) + extraBoxes;
-    return Math.round((totalBoxes / 16) * 100);
-  };
 
   // Load all players data
   const loadAllPlayers = async () => {
     try {
-      // 檢查 window.storage 是否存在
-      if (!window.storage) {
-        setDebugInfo('❌ window.storage API 不存在');
-        setIsLoading(false);
-        return;
-      }
-
-      setDebugInfo('✅ 正在讀取共享儲存...');
       const result = await window.storage.list('bingo_player:', true);
-      
       if (result && result.keys) {
-        setDebugInfo(`✅ 找到 ${result.keys.length} 個玩家資料`);
         const playersData = [];
         const oneHourAgo = Date.now() - (60 * 60 * 1000);
         
@@ -168,10 +153,7 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
             const data = await window.storage.get(key, true);
             if (data && data.value) {
               const playerData = JSON.parse(data.value);
-              
               if (playerData.timestamp > oneHourAgo) {
-                // Add percentage to player data
-                playerData.percentage = calculatePercentage(playerData.lines, playerData.extraBoxes);
                 playersData.push(playerData);
               }
             }
@@ -186,15 +168,9 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
         });
         
         setAllPlayers(playersData);
-        if (playersData.length === 0) {
-          setDebugInfo('⚠️ 所有玩家資料都超過1小時');
-        }
-      } else {
-        setDebugInfo('⚠️ 沒有找到任何玩家資料');
       }
     } catch (error) {
-      setDebugInfo(`❌ 錯誤: ${error.message}`);
-      console.log('Storage error:', error);
+      console.log('Storage not available or error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -202,7 +178,6 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
 
   useEffect(() => {
     loadAllPlayers();
-    // Refresh every 5 seconds
     const interval = setInterval(loadAllPlayers, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -244,29 +219,21 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
 
       {/* Content container */}
       <div className="relative z-10 px-4 pt-20 pb-8 h-full overflow-y-auto">
-        {/* Debug Info - 診斷資訊 */}
-        {debugInfo && (
-          <div className="bg-blue-100 border border-blue-400 rounded-lg p-3 mb-4 text-sm">
-            <div className="font-mono text-blue-800">{debugInfo}</div>
-          </div>
-        )}
-
         {/* My Progress Card */}
         <div className="bg-white/95 rounded-2xl p-4 mb-4">
           <div className="text-black text-base font-bold mb-2">
             {language === 'chinese' ? '我的進度:' : 'My Progress:'}
           </div>
-          <div className="text-black text-2xl font-bold mb-2">{playerName}</div>
           <div className="text-black text-sm mb-2">
             {formatProgress(progressData.lines, progressData.extraBoxes, language)}
           </div>
           <div className="relative w-full h-8 bg-white rounded-2xl border border-blue-900 overflow-hidden">
             <div 
               className="absolute left-0 top-0 h-full bg-yellow-400 rounded-2xl transition-all duration-300"
-              style={{ width: `${calculatePercentage(progressData.lines, progressData.extraBoxes)}%` }}
+              style={{ width: `${progressData.percentage}%` }}
             />
             <div className="absolute inset-0 flex items-center justify-center text-black text-base font-bold">
-              {calculatePercentage(progressData.lines, progressData.extraBoxes)}%
+              {progressData.percentage}%
             </div>
           </div>
         </div>
@@ -319,75 +286,70 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
   );
 }
 
-// Main Game Component
-export default function GamePage() {
-  const [language, setLanguage] = useState('chinese');
-  const [gameState, setGameState] = useState('home'); // 'home', 'game', 'progress'
-  const [playerName, setPlayerName] = useState('');
-  const [shuffledTasks, setShuffledTasks] = useState([]);
-  const [taskStates, setTaskStates] = useState(Array(16).fill('default'));
-  const [showCelebration, setShowCelebration] = useState(false);
-  const [celebrationStage, setCelebrationStage] = useState(0);
-  const [progressData, setProgressData] = useState({ lines: 0, extraBoxes: 0 });
+// Main App Component
+export default function App() {
+  // Game state: 'home', 'playing', or 'progress'
+  const [gameState, setGameState] = useState(() => {
+    // 從 localStorage 恢復 gameState，若無則預設為 'home'
+    return localStorage.getItem('barHoppingGameState') || 'home';
+  });
+  const [playerName, setPlayerName] = useState(() => {
+    // 從 localStorage 恢復 playerName
+    return localStorage.getItem('barHoppingPlayerName') || '';
+  });
 
+  // Language state
+  const [language, setLanguage] = useState(() => {
+    return localStorage.getItem('barHoppingLanguage') || 'chinese';
+  });
+
+  // Get current tasks based on language
   const tasks = language === 'chinese' ? tasksChinese : tasksEnglish;
 
-  // 🔥 檢查是否有保存的玩家名稱，如果有則直接進入遊戲
-  useEffect(() => {
-    const savedPlayerName = localStorage.getItem('playerName');
-    if (savedPlayerName) {
-      setPlayerName(savedPlayerName);
-      setGameState('game');
-    }
-  }, []);
-
-  // Initialize or load tasks from localStorage
-  useEffect(() => {
+  // Get or create shuffled tasks from localStorage
+  const [shuffledTasks, setShuffledTasks] = useState(() => {
     const savedTasks = localStorage.getItem('barHoppingTasks');
-    const savedStates = localStorage.getItem('barHoppingStates');
-    
     if (savedTasks) {
-      setShuffledTasks(JSON.parse(savedTasks));
+      return JSON.parse(savedTasks);
     } else {
-      const newShuffled = shuffleArray(tasks);
-      localStorage.setItem('barHoppingTasks', JSON.stringify(newShuffled));
-      setShuffledTasks(newShuffled);
+      const shuffled = shuffleArray(tasks);
+      localStorage.setItem('barHoppingTasks', JSON.stringify(shuffled));
+      return shuffled;
     }
-    
+  });
+
+  // Get or create task states from localStorage - fix stuck "clicking" states
+  const [taskStates, setTaskStates] = useState(() => {
+    const savedStates = localStorage.getItem('barHoppingStates');
     if (savedStates) {
-      setTaskStates(JSON.parse(savedStates));
+      const states = JSON.parse(savedStates);
+      return states.map(state => state === 'clicking' ? 'default' : state);
     }
-  }, []);
+    return Array(16).fill('default');
+  });
 
-  // Save task states to localStorage whenever they change
-  useEffect(() => {
-    if (taskStates.some(state => state !== 'default')) {
-      localStorage.setItem('barHoppingStates', JSON.stringify(taskStates));
-    }
-  }, [taskStates]);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationStage, setCelebrationStage] = useState(0);
 
-  // Update tasks when language changes
+  // 儲存 gameState 和 playerName 到 localStorage
   useEffect(() => {
-    if (shuffledTasks.length > 0) {
-      const newShuffled = shuffleArray(tasks);
-      localStorage.setItem('barHoppingTasks', JSON.stringify(newShuffled));
-      setShuffledTasks(newShuffled);
-    }
-  }, [language]);
+    localStorage.setItem('barHoppingGameState', gameState);
+    localStorage.setItem('barHoppingPlayerName', playerName);
+  }, [gameState, playerName]);
 
-  // Calculate and update progress data whenever task states change
-  useEffect(() => {
-    const finishedIndices = taskStates
-      .map((state, idx) => state === 'finished' ? idx : -1)
-      .filter(idx => idx !== -1);
+  // Calculate progress with lines and extra boxes
+  const calculateProgressWithLines = () => {
+    const finishedIndices = taskStates.map((state, idx) => state === 'finished' ? idx : -1).filter(idx => idx !== -1);
     
-    let lines = 0;
+    let completedLines = 0;
+    const completedBoxIndices = new Set();
     
     // Check rows
     for (let row = 0; row < 4; row++) {
       const rowIndices = [row * 4, row * 4 + 1, row * 4 + 2, row * 4 + 3];
       if (rowIndices.every(idx => finishedIndices.includes(idx))) {
-        lines++;
+        completedLines++;
+        rowIndices.forEach(idx => completedBoxIndices.add(idx));
       }
     }
     
@@ -395,7 +357,8 @@ export default function GamePage() {
     for (let col = 0; col < 4; col++) {
       const colIndices = [col, col + 4, col + 8, col + 12];
       if (colIndices.every(idx => finishedIndices.includes(idx))) {
-        lines++;
+        completedLines++;
+        colIndices.forEach(idx => completedBoxIndices.add(idx));
       }
     }
     
@@ -403,74 +366,103 @@ export default function GamePage() {
     const diag1 = [0, 5, 10, 15];
     const diag2 = [3, 6, 9, 12];
     if (diag1.every(idx => finishedIndices.includes(idx))) {
-      lines++;
+      completedLines++;
+      diag1.forEach(idx => completedBoxIndices.add(idx));
     }
     if (diag2.every(idx => finishedIndices.includes(idx))) {
-      lines++;
+      completedLines++;
+      diag2.forEach(idx => completedBoxIndices.add(idx));
     }
     
-    const finishedCount = finishedIndices.length;
-    const extraBoxes = Math.max(0, finishedCount - (lines * 4));
+    // Calculate extra boxes
+    const extraBoxes = finishedIndices.filter(idx => !completedBoxIndices.has(idx)).length;
     
-    setProgressData({ lines, extraBoxes });
+    // Calculate percentage for progress bar
+    const lineProgress = (completedLines / 3) * 100;
+    const boxProgress = (extraBoxes / 16) * 33.33;
+    const totalProgress = Math.min(lineProgress + boxProgress, 100);
+    
+    return {
+      lines: completedLines,
+      extraBoxes: extraBoxes,
+      percentage: Math.round(totalProgress)
+    };
+  };
 
-    // 🔥 同步到共享儲存（新增）
-    if (playerName && gameState === 'game') {
-      saveProgressToSharedStorage({ lines, extraBoxes });
-    }
-  }, [taskStates, playerName, gameState]);
+  const progressData = calculateProgressWithLines();
 
-  // 🔥 新增：同步進度到共享儲存的函數
-  const saveProgressToSharedStorage = async (progress) => {
+  // Save player data to shared storage
+  const savePlayerData = async () => {
+    if (!playerName) return;
+    
     try {
-      const progressDataToSave = {
-        playerName: playerName,
-        lines: progress.lines,
-        extraBoxes: progress.extraBoxes,
+      const playerData = {
+        playerName,
+        lines: progressData.lines,
+        extraBoxes: progressData.extraBoxes,
+        percentage: progressData.percentage,
         timestamp: Date.now()
       };
       
-      await window.storage.set(
-        `bingo_player:${playerName}`, 
-        JSON.stringify(progressDataToSave), 
-        true
-      );
-      
-      console.log('Progress synced to shared storage:', progressDataToSave);
+      const key = `bingo_player:${playerName}`;
+      await window.storage.set(key, JSON.stringify(playerData), true);
     } catch (error) {
-      console.log('Could not save to shared storage:', error);
+      console.log('Could not save player data:', error);
     }
   };
 
+  // Save task states to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('barHoppingStates', JSON.stringify(taskStates));
+    if (gameState === 'playing') {
+      savePlayerData();
+    }
+  }, [taskStates]);
+
+  // Save language preference
+  useEffect(() => {
+    localStorage.setItem('barHoppingLanguage', language);
+  }, [language]);
+
+  // Handle start game with reset
   const handleStartGame = (name) => {
     setPlayerName(name);
-    setGameState('game');
-    
-    // 保存玩家名稱到 localStorage
-    localStorage.setItem('playerName', name);
-    
-    // 🔥 遊戲開始時立即同步初始進度
-    setTimeout(() => {
-      saveProgressToSharedStorage({ lines: 0, extraBoxes: 0 });
-    }, 100);
+    localStorage.removeItem('barHoppingTasks');
+    localStorage.removeItem('barHoppingStates');
+    const newShuffled = shuffleArray(tasks);
+    localStorage.setItem('barHoppingTasks', JSON.stringify(newShuffled));
+    setShuffledTasks(newShuffled);
+    const resetStates = Array(16).fill('default');
+    localStorage.setItem('barHoppingStates', JSON.stringify(resetStates));
+    setTaskStates(resetStates);
+    setGameState('playing');
   };
 
+  // Handle view progress
   const handleViewProgress = () => {
     setGameState('progress');
   };
 
+  // Handle back to game
   const handleBackToGame = () => {
-    setGameState('game');
+    setGameState('playing');
+  };
+
+  // Toggle language and update tasks
+  const toggleLanguage = () => {
+    const newLanguage = language === 'chinese' ? 'english' : 'chinese';
+    setLanguage(newLanguage);
+    const newTasks = newLanguage === 'chinese' ? tasksChinese : tasksEnglish;
+    const newShuffled = shuffleArray(newTasks);
+    localStorage.setItem('barHoppingTasks', JSON.stringify(newShuffled));
+    setShuffledTasks(newShuffled);
   };
 
   const checkForBingo = (states) => {
-    const finishedIndices = states
-      .map((state, idx) => state === 'finished' ? idx : -1)
-      .filter(idx => idx !== -1);
+    const finishedIndices = states.map((state, idx) => state === 'finished' ? idx : -1).filter(idx => idx !== -1);
     
     let completedLines = 0;
     
-    // Check rows
     for (let row = 0; row < 4; row++) {
       const rowIndices = [row * 4, row * 4 + 1, row * 4 + 2, row * 4 + 3];
       if (rowIndices.every(idx => finishedIndices.includes(idx))) {
@@ -478,7 +470,6 @@ export default function GamePage() {
       }
     }
     
-    // Check columns
     for (let col = 0; col < 4; col++) {
       const colIndices = [col, col + 4, col + 8, col + 12];
       if (colIndices.every(idx => finishedIndices.includes(idx))) {
@@ -486,7 +477,6 @@ export default function GamePage() {
       }
     }
     
-    // Check diagonals
     const diag1 = [0, 5, 10, 15];
     const diag2 = [3, 6, 9, 12];
     if (diag1.every(idx => finishedIndices.includes(idx))) {
@@ -496,7 +486,6 @@ export default function GamePage() {
       completedLines++;
     }
     
-    // Return true only if 3 or more lines are completed
     return completedLines >= 3;
   };
 
@@ -504,18 +493,15 @@ export default function GamePage() {
     const currentState = taskStates[index];
     
     if (currentState === 'default') {
-      // Show "clicking" state with icon 1
       const newStates = [...taskStates];
       newStates[index] = 'clicking';
       setTaskStates(newStates);
       
-      // After 500ms, change to finished with icon 2
       const timer = setTimeout(() => {
         setTaskStates(prevStates => {
           const updatedStates = [...prevStates];
           updatedStates[index] = 'finished';
           
-          // Check for bingo after state update
           if (checkForBingo(updatedStates)) {
             setTimeout(() => {
               setShowCelebration(true);
@@ -527,10 +513,8 @@ export default function GamePage() {
         });
       }, 500);
 
-      // Store timer to clean up if needed
       return () => clearTimeout(timer);
     } else if (currentState === 'finished' || currentState === 'clicking') {
-      // Reset to default (allow reset even if stuck in clicking)
       const newStates = [...taskStates];
       newStates[index] = 'default';
       setTaskStates(newStates);
@@ -538,30 +522,25 @@ export default function GamePage() {
   };
 
   const handleReset = () => {
-    // Clear localStorage - 清除所有遊戲資料
+    // 清空 localStorage
     localStorage.removeItem('barHoppingTasks');
     localStorage.removeItem('barHoppingStates');
-    localStorage.removeItem('playerName');
+    localStorage.removeItem('barHoppingGameState');
+    localStorage.removeItem('barHoppingPlayerName');
     
-    // 清除共享儲存中的玩家資料
-    if (playerName) {
-      try {
-        window.storage.remove(`bingo_player:${playerName}`, true);
-      } catch (error) {
-        console.log('Could not remove from shared storage:', error);
-      }
-    }
+    // 重置任務和狀態
+    const newShuffled = shuffleArray(tasks);
+    localStorage.setItem('barHoppingTasks', JSON.stringify(newShuffled));
+    setShuffledTasks(newShuffled);
+    const resetStates = Array(16).fill('default');
+    localStorage.setItem('barHoppingStates', JSON.stringify(resetStates));
+    setTaskStates(resetStates);
     
-    // Reset all states
+    // 重置遊戲狀態回到首頁
+    setGameState('home');
     setPlayerName('');
-    setShuffledTasks([]);
-    setTaskStates(Array(16).fill('default'));
     setShowCelebration(false);
     setCelebrationStage(0);
-    setProgressData({ lines: 0, extraBoxes: 0 });
-    
-    // 回到首頁
-    setGameState('home');
   };
 
   useEffect(() => {
@@ -574,7 +553,7 @@ export default function GamePage() {
     }
   }, [showCelebration, celebrationStage]);
 
-  // Show home page if game hasn't started
+  // Show home page if game hasn't started or reset
   if (gameState === 'home') {
     return <HomePage onStartGame={handleStartGame} language={language} setLanguage={setLanguage} />;
   }
@@ -591,7 +570,7 @@ export default function GamePage() {
         {/* Background image */}
         <div className="absolute inset-0 bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500"></div>
         
-        {/* Logo at top - stays within screen */}
+        {/* Logo at top */}
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 max-w-xs w-full px-4">
           <img 
             src="https://i.imgur.com/2TtbhMD.png" 
@@ -600,7 +579,7 @@ export default function GamePage() {
           />
         </div>
 
-        {/* Celebration beer king - can overflow screen */}
+        {/* Celebration beer king */}
         <div 
           className="relative z-10 transition-all duration-1000 ease-out"
           style={{
@@ -615,7 +594,7 @@ export default function GamePage() {
           />
         </div>
 
-        {/* Close button - stays within screen */}
+        {/* Close button */}
         <button
           onClick={() => setShowCelebration(false)}
           className="absolute top-4 right-4 z-30 bg-white text-gray-800 px-4 py-2 rounded-full font-bold hover:bg-gray-100 transition-colors text-sm"
@@ -623,13 +602,13 @@ export default function GamePage() {
           {language === 'chinese' ? '關閉' : 'Close'}
         </button>
 
-        {/* Reset button at bottom - stays within screen with safe area */}
+        {/* Restart game button */}
         <div className="absolute bottom-0 left-0 right-0 z-30 px-6 pb-6">
           <button
             onClick={handleReset}
             className="w-full h-8 bg-white text-black border-2 border-black font-bold rounded-lg hover:bg-gray-100 transition-colors"
           >
-            {language === 'chinese' ? '重新開始遊戲' : 'Start New Game'}
+            {language === 'chinese' ? '重新開始遊戲' : 'Restart Game'}
           </button>
         </div>
       </div>
@@ -662,10 +641,7 @@ export default function GamePage() {
 
       {/* Main content */}
       <div className="relative z-10 px-5 pt-32 pb-8 min-h-screen">
-        {/* White background container - extended top to overlap with logo */}
         <div className="bg-white/95 rounded-2xl pt-32 px-4 pb-4 shadow-2xl w-full max-w-md mx-auto">
-
-          {/* 4x4 Grid with min-width 64px and dynamic sizing */}
           <div className="flex flex-col gap-3">
             {[0, 1, 2, 3].map((row) => (
               <div key={row} className="flex justify-between gap-2">
@@ -688,13 +664,11 @@ export default function GamePage() {
                           {task}
                         </div>
                       )}
-                      
                       {taskStates[index] === 'clicking' && (
                         <div className="flex flex-col items-center justify-center h-full w-full">
                           <BeerIcon stage="clicking" />
                         </div>
                       )}
-                      
                       {taskStates[index] === 'finished' && (
                         <div className="flex flex-col items-center justify-center h-full w-full">
                           <BeerIcon stage="finished" />
