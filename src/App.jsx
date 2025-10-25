@@ -134,15 +134,55 @@ function HomePage({ onStartGame, language, setLanguage }) {
 }
 
 // Progress View Page Component
-function ProgressViewPage({ onBack, progressData, language }) {
-  // Mock data for other players
-  const otherPlayers = [
-    { name: language === 'chinese' ? '玩家１' : 'Player 1', lines: 1, extraBoxes: 5, percentage: 45 },
-    { name: language === 'chinese' ? '玩家２' : 'Player 2', lines: 2, extraBoxes: 2, percentage: 73 },
-    { name: language === 'chinese' ? '玩家３' : 'Player 3', lines: 0, extraBoxes: 8, percentage: 17 },
-    { name: language === 'chinese' ? '玩家４' : 'Player 4', lines: 1, extraBoxes: 3, percentage: 40 },
-    { name: language === 'chinese' ? '玩家５' : 'Player 5', lines: 3, extraBoxes: 0, percentage: 100 },
-  ];
+function ProgressViewPage({ onBack, progressData, language, playerName }) {
+  const [allPlayers, setAllPlayers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load all players data
+  const loadAllPlayers = async () => {
+    try {
+      const result = await window.storage.list('bingo_player:', true);
+      if (result && result.keys) {
+        const playersData = [];
+        const oneHourAgo = Date.now() - (60 * 60 * 1000); // 1 hour in milliseconds
+        
+        for (const key of result.keys) {
+          try {
+            const data = await window.storage.get(key, true);
+            if (data && data.value) {
+              const playerData = JSON.parse(data.value);
+              
+              // Only include players updated within last hour
+              if (playerData.timestamp > oneHourAgo) {
+                playersData.push(playerData);
+              }
+            }
+          } catch (e) {
+            console.log('Could not load player:', key);
+          }
+        }
+        
+        // Sort by progress (lines first, then extra boxes)
+        playersData.sort((a, b) => {
+          if (b.lines !== a.lines) return b.lines - a.lines;
+          return b.extraBoxes - a.extraBoxes;
+        });
+        
+        setAllPlayers(playersData);
+      }
+    } catch (error) {
+      console.log('Storage not available or error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAllPlayers();
+    // Refresh every 5 seconds
+    const interval = setInterval(loadAllPlayers, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const formatProgress = (lines, extraBoxes, lang) => {
     if (lines === 0) {
@@ -206,27 +246,42 @@ function ProgressViewPage({ onBack, progressData, language }) {
             {language === 'chinese' ? '其他玩家進度:' : 'Other Players Progress:'}
           </div>
           
-          <div className="space-y-4">
-            {otherPlayers.map((player, index) => (
-              <div key={index}>
-                <div className="flex justify-between items-center mb-1">
-                  <div className="text-black text-base">{player.name}</div>
-                  <div className="text-black text-sm">
-                    {formatProgress(player.lines, player.extraBoxes, language)}
+          {isLoading ? (
+            <div className="text-center text-gray-500 py-4">
+              {language === 'chinese' ? '載入中...' : 'Loading...'}
+            </div>
+          ) : allPlayers.length === 0 ? (
+            <div className="text-center text-gray-500 py-4">
+              {language === 'chinese' ? '目前沒有其他玩家' : 'No other players yet'}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {allPlayers.map((player, index) => {
+                const isMe = player.playerName === playerName;
+                return (
+                  <div key={index}>
+                    <div className="flex justify-between items-center mb-1">
+                      <div className={`text-black text-base ${isMe ? 'font-bold' : ''}`}>
+                        {player.playerName} {isMe && (language === 'chinese' ? '(你)' : '(You)')}
+                      </div>
+                      <div className="text-black text-sm">
+                        {formatProgress(player.lines, player.extraBoxes, language)}
+                      </div>
+                    </div>
+                    <div className="relative w-full h-8 bg-white rounded-2xl border border-blue-900 overflow-hidden">
+                      <div 
+                        className="absolute left-0 top-0 h-full bg-yellow-400 rounded-2xl transition-all duration-300"
+                        style={{ width: `${player.percentage}%` }}
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center text-black text-base font-bold">
+                        {player.percentage}%
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="relative w-full h-8 bg-white rounded-2xl border border-blue-900 overflow-hidden">
-                  <div 
-                    className="absolute left-0 top-0 h-full bg-yellow-400 rounded-2xl transition-all duration-300"
-                    style={{ width: `${player.percentage}%` }}
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center text-black text-base font-bold">
-                    {player.percentage}%
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -328,9 +383,34 @@ export default function App() {
 
   const progressData = calculateProgressWithLines();
 
+  // Save player data to shared storage
+  const savePlayerData = async () => {
+    if (!playerName) return;
+    
+    try {
+      const playerData = {
+        playerName,
+        lines: progressData.lines,
+        extraBoxes: progressData.extraBoxes,
+        percentage: progressData.percentage,
+        timestamp: Date.now()
+      };
+      
+      // Use player name as unique key
+      const key = `bingo_player:${playerName}`;
+      await window.storage.set(key, JSON.stringify(playerData), true);
+    } catch (error) {
+      console.log('Could not save player data:', error);
+    }
+  };
+
   // Save task states to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('barHoppingStates', JSON.stringify(taskStates));
+    // Also save to shared storage
+    if (gameState === 'playing') {
+      savePlayerData();
+    }
   }, [taskStates]);
 
   // Save language preference
@@ -492,7 +572,7 @@ export default function App() {
 
   // Show progress view page
   if (gameState === 'progress') {
-    return <ProgressViewPage onBack={handleBackToGame} progressData={progressData} language={language} />;
+    return <ProgressViewPage onBack={handleBackToGame} progressData={progressData} language={language} playerName={playerName} />;
   }
 
   // Celebration screen
