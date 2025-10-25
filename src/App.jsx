@@ -260,8 +260,43 @@ export default function App() {
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationStage, setCelebrationStage] = useState(0);
 
-  // Calculate progress
-  const myProgress = Math.round((taskStates.filter(s => s === 'finished').length / 16) * 100);
+// Calculate progress based on completed lines (3 lines = 100%)
+const calculateProgress = () => {
+  const finishedIndices = taskStates.map((state, idx) => state === 'finished' ? idx : -1).filter(idx => idx !== -1);
+  
+  let completedLines = 0;
+  
+  // Check rows
+  for (let row = 0; row < 4; row++) {
+    const rowIndices = [row * 4, row * 4 + 1, row * 4 + 2, row * 4 + 3];
+    if (rowIndices.every(idx => finishedIndices.includes(idx))) {
+      completedLines++;
+    }
+  }
+  
+  // Check columns
+  for (let col = 0; col < 4; col++) {
+    const colIndices = [col, col + 4, col + 8, col + 12];
+    if (colIndices.every(idx => finishedIndices.includes(idx))) {
+      completedLines++;
+    }
+  }
+  
+  // Check diagonals
+  const diag1 = [0, 5, 10, 15];
+  const diag2 = [3, 6, 9, 12];
+  if (diag1.every(idx => finishedIndices.includes(idx))) {
+    completedLines++;
+  }
+  if (diag2.every(idx => finishedIndices.includes(idx))) {
+    completedLines++;
+  }
+  
+  // Calculate percentage: 3 lines = 100%
+  return Math.min(Math.round((completedLines / 3) * 100), 100);
+};
+
+const myProgress = calculateProgress();
 
   // Save task states to localStorage whenever they change
   useEffect(() => {
