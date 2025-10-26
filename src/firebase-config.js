@@ -6,13 +6,13 @@ import { getDatabase, ref, set, onValue, remove, get } from 'firebase/database';
 
 // 您的 Firebase 配置（從 Firebase Console 獲取）
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCzYsOqbRSgvKe0ey7ORJijB6ENTMTwjSw",
+  authDomain: "bar-hopping-bingo-74b10.firebaseapp.com",
+  databaseURL: "https://bar-hopping-bingo-74b10-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "bar-hopping-bingo-74b10",
+  storageBucket: "bar-hopping-bingo-74b10.firebasestorage.app",
+  messagingSenderId: "356791310307",
+  appId: "1:356791310307:web:90c544cdf00f69b3deb2d6"
 };
 
 // 初始化 Firebase
