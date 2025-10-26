@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { database, ref, set, onValue, remove } from './firebase-config';
 
 const BeerIcon = ({ stage }) => (
   <img 
@@ -145,60 +146,73 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
     return Math.round((totalBoxes / 16) * 100);
   };
 
-  // Load all players data
-  const loadAllPlayers = async () => {
+  // Load all players data from Firebase (real-time)
+  const loadAllPlayers = () => {
     try {
-      setDebugInfo('✅ 正在讀取共享儲存...');
+      setDebugInfo('✅ 正在連接 Firebase...');
       
-      // 從 localStorage 讀取所有玩家資料
-      const allPlayersKey = 'bingo_all_players';
-      const existingData = localStorage.getItem(allPlayersKey);
+      const playersRef = ref(database, 'players');
       
-      if (!existingData) {
-        setDebugInfo('⚠️ 還沒有其他玩家資料');
-        setIsLoading(false);
-        return;
-      }
-      
-      const allPlayersObj = JSON.parse(existingData);
-      const playersData = [];
-      const oneHourAgo = Date.now() - (60 * 60 * 1000);
-      
-      // 轉換物件為陣列並過濾過期資料
-      for (const [name, data] of Object.entries(allPlayersObj)) {
-        if (data.timestamp > oneHourAgo) {
-          // Add percentage to player data
-          data.percentage = calculatePercentage(data.lines, data.extraBoxes);
-          playersData.push(data);
+      // 使用 onValue 監聽即時更新
+      const unsubscribe = onValue(playersRef, (snapshot) => {
+        const data = snapshot.val();
+        
+        if (!data) {
+          setDebugInfo('⚠️ Firebase 中還沒有玩家資料');
+          setAllPlayers([]);
+          setIsLoading(false);
+          return;
         }
-      }
-      
-      setDebugInfo(`✅ 找到 ${playersData.length} 個活躍玩家`);
-      
-      // 排序：先按線數，再按額外格子數
-      playersData.sort((a, b) => {
-        if (b.lines !== a.lines) return b.lines - a.lines;
-        return b.extraBoxes - a.extraBoxes;
+        
+        const playersData = [];
+        const oneHourAgo = Date.now() - (60 * 60 * 1000);
+        
+        // 轉換物件為陣列並過濾過期資料
+        for (const [name, playerData] of Object.entries(data)) {
+          if (playerData.timestamp > oneHourAgo) {
+            // Add percentage to player data
+            playerData.percentage = calculatePercentage(playerData.lines, playerData.extraBoxes);
+            playersData.push(playerData);
+          }
+        }
+        
+        setDebugInfo(`✅ 找到 ${playersData.length} 個活躍玩家（即時更新）`);
+        
+        // 排序：先按線數，再按額外格子數
+        playersData.sort((a, b) => {
+          if (b.lines !== a.lines) return b.lines - a.lines;
+          return b.extraBoxes - a.extraBoxes;
+        });
+        
+        setAllPlayers(playersData);
+        setIsLoading(false);
+        
+        if (playersData.length === 0) {
+          setDebugInfo('⚠️ 所有玩家資料都超過1小時');
+        }
+      }, (error) => {
+        setDebugInfo(`❌ Firebase 錯誤: ${error.message}`);
+        console.log('Firebase error:', error);
+        setIsLoading(false);
       });
       
-      setAllPlayers(playersData);
-      
-      if (playersData.length === 0) {
-        setDebugInfo('⚠️ 所有玩家資料都超過1小時');
-      }
+      // 返回清理函數
+      return unsubscribe;
     } catch (error) {
-      setDebugInfo(`❌ 錯誤: ${error.message}`);
-      console.log('Storage error:', error);
-    } finally {
+      setDebugInfo(`❌ 初始化錯誤: ${error.message}`);
+      console.log('Initialization error:', error);
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    loadAllPlayers();
-    // Refresh every 5 seconds
-    const interval = setInterval(loadAllPlayers, 5000);
-    return () => clearInterval(interval);
+    const unsubscribe = loadAllPlayers();
+    // 清理監聽器
+    return () => {
+      if (unsubscribe && typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
   }, []);
 
   const formatProgress = (lines, extraBoxes, lang) => {
@@ -414,7 +428,7 @@ export default function GamePage() {
     }
   }, [taskStates, playerName, gameState]);
 
-  // 🔥 新增：同步進度到共享儲存的函數（使用 localStorage）
+  // 🔥 新增：同步進度到 Firebase Realtime Database
   const saveProgressToSharedStorage = async (progress) => {
     try {
       const progressDataToSave = {
@@ -424,20 +438,13 @@ export default function GamePage() {
         timestamp: Date.now()
       };
       
-      // 使用 localStorage 儲存所有玩家的進度
-      const allPlayersKey = 'bingo_all_players';
-      const existingData = localStorage.getItem(allPlayersKey);
-      let allPlayers = existingData ? JSON.parse(existingData) : {};
+      // 使用 Firebase 儲存玩家進度
+      const playerRef = ref(database, `players/${playerName}`);
+      await set(playerRef, progressDataToSave);
       
-      // 更新當前玩家的資料
-      allPlayers[playerName] = progressDataToSave;
-      
-      // 儲存回 localStorage
-      localStorage.setItem(allPlayersKey, JSON.stringify(allPlayers));
-      
-      console.log('Progress synced to localStorage:', progressDataToSave);
+      console.log('✅ Progress synced to Firebase:', progressDataToSave);
     } catch (error) {
-      console.log('Could not save to shared storage:', error);
+      console.log('❌ Could not save to Firebase:', error);
     }
   };
 
@@ -536,24 +543,20 @@ export default function GamePage() {
     }
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     // Clear localStorage - 清除所有遊戲資料
     localStorage.removeItem('barHoppingTasks');
     localStorage.removeItem('barHoppingStates');
     localStorage.removeItem('playerName');
     
-    // 從共享玩家列表中移除當前玩家
+    // 從 Firebase 中移除當前玩家
     if (playerName) {
       try {
-        const allPlayersKey = 'bingo_all_players';
-        const existingData = localStorage.getItem(allPlayersKey);
-        if (existingData) {
-          const allPlayers = JSON.parse(existingData);
-          delete allPlayers[playerName];
-          localStorage.setItem(allPlayersKey, JSON.stringify(allPlayers));
-        }
+        const playerRef = ref(database, `players/${playerName}`);
+        await remove(playerRef);
+        console.log('✅ Player removed from Firebase');
       } catch (error) {
-        console.log('Could not remove from shared storage:', error);
+        console.log('❌ Could not remove from Firebase:', error);
       }
     }
     
