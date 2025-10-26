@@ -323,57 +323,65 @@ export default function GamePage() {
 
   const tasks = language === 'chinese' ? tasksChinese : tasksEnglish;
 
-  // 🔥 立即初始化任務（在組件載入時）
+  // 🔥 立即初始化任務（在組件載入時）- 最高優先級
   useEffect(() => {
-    console.log('🎮 初始化任務列表...');
-    if (tasks.length === 0) {
-      console.log('⚠️ 任務列表為空，等待載入...');
-      return;
-    }
+    console.log('🎮 組件掛載，開始初始化任務...');
     
-    const savedTasks = localStorage.getItem('barHoppingTasks');
-    
-    if (savedTasks) {
-      try {
-        const parsed = JSON.parse(savedTasks);
-        if (parsed.length === 16) {
-          console.log('✅ 載入已保存的任務');
-          setShuffledTasks(parsed);
-          return;
+    const initializeTasks = () => {
+      const savedTasks = localStorage.getItem('barHoppingTasks');
+      const savedStates = localStorage.getItem('barHoppingStates');
+      
+      // 載入或創建任務
+      if (savedTasks) {
+        try {
+          const parsed = JSON.parse(savedTasks);
+          if (parsed.length === 16) {
+            console.log('✅ 載入已保存的任務 (16個)');
+            setShuffledTasks(parsed);
+          } else {
+            console.log('⚠️ 任務數量不正確，重新創建');
+            const newShuffled = shuffleArray(tasks);
+            localStorage.setItem('barHoppingTasks', JSON.stringify(newShuffled));
+            setShuffledTasks(newShuffled);
+          }
+        } catch (e) {
+          console.log('⚠️ 解析任務失敗，重新創建');
+          const newShuffled = shuffleArray(tasks);
+          localStorage.setItem('barHoppingTasks', JSON.stringify(newShuffled));
+          setShuffledTasks(newShuffled);
         }
-      } catch (e) {
-        console.log('⚠️ 解析保存的任務失敗');
+      } else {
+        console.log('🔀 首次創建任務順序');
+        const newShuffled = shuffleArray(tasks);
+        localStorage.setItem('barHoppingTasks', JSON.stringify(newShuffled));
+        setShuffledTasks(newShuffled);
       }
-    }
+      
+      // 載入任務狀態
+      if (savedStates) {
+        try {
+          const parsed = JSON.parse(savedStates);
+          console.log('✅ 載入已保存的任務狀態');
+          setTaskStates(parsed);
+        } catch (e) {
+          console.log('⚠️ 解析任務狀態失敗');
+        }
+      }
+    };
     
-    // 如果沒有保存的任務或載入失敗，創建新的
-    console.log('🔀 創建新的任務順序');
-    const newShuffled = shuffleArray(tasks);
-    localStorage.setItem('barHoppingTasks', JSON.stringify(newShuffled));
-    setShuffledTasks(newShuffled);
-  }, [language]); // 只在語言改變時重新初始化
+    initializeTasks();
+  }, []); // 只在組件掛載時執行一次
 
-  // 🔥 檢查是否有保存的玩家名稱，如果有則直接進入遊戲
+  // 🔥 檢查是否有保存的玩家名稱
   useEffect(() => {
     const savedPlayerName = localStorage.getItem('playerName');
     if (savedPlayerName) {
       console.log('👤 發現已保存的玩家:', savedPlayerName);
       setPlayerName(savedPlayerName);
-      setGameState('game');
-    }
-  }, []);
-
-  // 🔥 載入已保存的任務狀態
-  useEffect(() => {
-    const savedStates = localStorage.getItem('barHoppingStates');
-    if (savedStates) {
-      try {
-        const parsed = JSON.parse(savedStates);
-        console.log('✅ 載入已保存的任務狀態');
-        setTaskStates(parsed);
-      } catch (e) {
-        console.log('⚠️ 解析任務狀態失敗');
-      }
+      // 延遲進入遊戲，確保任務已載入
+      setTimeout(() => {
+        setGameState('game');
+      }, 100);
     }
   }, []);
 
@@ -384,14 +392,15 @@ export default function GamePage() {
     }
   }, [taskStates]);
 
-  // Update tasks when language changes
+  // 🔥 語言改變時重新洗牌任務
   useEffect(() => {
-    if (shuffledTasks.length > 0) {
+    if (language && tasks.length > 0) {
+      console.log('🌐 語言改變，重新洗牌任務');
       const newShuffled = shuffleArray(tasks);
       localStorage.setItem('barHoppingTasks', JSON.stringify(newShuffled));
       setShuffledTasks(newShuffled);
     }
-  }, [language, tasks]);
+  }, [language]);
 
   // Calculate and update progress data whenever task states change
   useEffect(() => {
@@ -473,16 +482,33 @@ export default function GamePage() {
   const handleStartGame = (name) => {
     console.log('🎮 遊戲開始，玩家:', name);
     setPlayerName(name);
-    setGameState('game');
     
     // 保存玩家名稱到 localStorage
     localStorage.setItem('playerName', name);
     
-    // 🔥 遊戲開始時立即同步初始進度
+    // 🔥 確保任務已經載入後才進入遊戲
+    const savedTasks = localStorage.getItem('barHoppingTasks');
+    if (!savedTasks || shuffledTasks.length === 0) {
+      console.log('⚠️ 任務尚未載入，立即初始化...');
+      const newShuffled = shuffleArray(tasks);
+      localStorage.setItem('barHoppingTasks', JSON.stringify(newShuffled));
+      setShuffledTasks(newShuffled);
+      
+      // 使用 setTimeout 確保狀態更新完成
+      setTimeout(() => {
+        console.log('✅ 任務已載入，進入遊戲');
+        setGameState('game');
+      }, 100);
+    } else {
+      console.log('✅ 任務已存在，直接進入遊戲');
+      setGameState('game');
+    }
+    
+    // 🔥 同步初始進度
     setTimeout(() => {
       console.log('📤 同步初始進度...');
       saveProgressToSharedStorage({ lines: 0, extraBoxes: 0 });
-    }, 100);
+    }, 200);
   };
 
   const handleViewProgress = () => {
@@ -697,47 +723,55 @@ export default function GamePage() {
         {/* White background container - extended top to overlap with logo */}
         <div className="bg-white/95 rounded-2xl pt-32 px-4 pb-4 shadow-2xl w-full max-w-md mx-auto">
 
-          {/* 4x4 Grid with min-width 64px and dynamic sizing */}
-          <div className="flex flex-col gap-3">
-            {[0, 1, 2, 3].map((row) => (
-              <div key={row} className="flex justify-between gap-2">
-                {[0, 1, 2, 3].map((col) => {
-                  const index = row * 4 + col;
-                  const task = shuffledTasks[index];
-                  return (
-                    <button
-                      key={index}
-                      onClick={() => handleTaskClick(index)}
-                      className={`
-                        flex-1 min-w-[64px] min-h-24 p-2 rounded-lg transition-all duration-200 flex flex-col items-center justify-center
-                        ${taskStates[index] === 'default' ? 'bg-white border-2 border-black hover:bg-gray-50' : ''}
-                        ${taskStates[index] === 'clicking' ? 'bg-white border-2 border-green-500 scale-95 h-24' : ''}
-                        ${taskStates[index] === 'finished' ? 'bg-white border-2 border-green-600 h-24' : ''}
-                      `}
-                    >
-                      {taskStates[index] === 'default' && (
-                        <div className="text-xs leading-tight text-center text-black">
-                          {task}
-                        </div>
-                      )}
-                      
-                      {taskStates[index] === 'clicking' && (
-                        <div className="flex flex-col items-center justify-center h-full w-full">
-                          <BeerIcon stage="clicking" />
-                        </div>
-                      )}
-                      
-                      {taskStates[index] === 'finished' && (
-                        <div className="flex flex-col items-center justify-center h-full w-full">
-                          <BeerIcon stage="finished" />
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
+          {/* 檢查任務是否載入 */}
+          {shuffledTasks.length === 0 ? (
+            <div className="text-center py-20">
+              <div className="text-gray-500 text-lg mb-2">載入中...</div>
+              <div className="text-gray-400 text-sm">正在準備任務</div>
+            </div>
+          ) : (
+            /* 4x4 Grid with min-width 64px and dynamic sizing */
+            <div className="flex flex-col gap-3">
+              {[0, 1, 2, 3].map((row) => (
+                <div key={row} className="flex justify-between gap-2">
+                  {[0, 1, 2, 3].map((col) => {
+                    const index = row * 4 + col;
+                    const task = shuffledTasks[index];
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => handleTaskClick(index)}
+                        className={`
+                          flex-1 min-w-[64px] min-h-24 p-2 rounded-lg transition-all duration-200 flex flex-col items-center justify-center
+                          ${taskStates[index] === 'default' ? 'bg-white border-2 border-black hover:bg-gray-50' : ''}
+                          ${taskStates[index] === 'clicking' ? 'bg-white border-2 border-green-500 scale-95 h-24' : ''}
+                          ${taskStates[index] === 'finished' ? 'bg-white border-2 border-green-600 h-24' : ''}
+                        `}
+                      >
+                        {taskStates[index] === 'default' && (
+                          <div className="text-xs leading-tight text-center text-black">
+                            {task}
+                          </div>
+                        )}
+                        
+                        {taskStates[index] === 'clicking' && (
+                          <div className="flex flex-col items-center justify-center h-full w-full">
+                            <BeerIcon stage="clicking" />
+                          </div>
+                        )}
+                        
+                        {taskStates[index] === 'finished' && (
+                          <div className="flex flex-col items-center justify-center h-full w-full">
+                            <BeerIcon stage="finished" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
