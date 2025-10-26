@@ -148,49 +148,43 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
   // Load all players data
   const loadAllPlayers = async () => {
     try {
-      // 檢查 window.storage 是否存在
-      if (!window.storage) {
-        setDebugInfo('❌ window.storage API 不存在');
+      setDebugInfo('✅ 正在讀取共享儲存...');
+      
+      // 從 localStorage 讀取所有玩家資料
+      const allPlayersKey = 'bingo_all_players';
+      const existingData = localStorage.getItem(allPlayersKey);
+      
+      if (!existingData) {
+        setDebugInfo('⚠️ 還沒有其他玩家資料');
         setIsLoading(false);
         return;
       }
-
-      setDebugInfo('✅ 正在讀取共享儲存...');
-      const result = await window.storage.list('bingo_player:', true);
       
-      if (result && result.keys) {
-        setDebugInfo(`✅ 找到 ${result.keys.length} 個玩家資料`);
-        const playersData = [];
-        const oneHourAgo = Date.now() - (60 * 60 * 1000);
-        
-        for (const key of result.keys) {
-          try {
-            const data = await window.storage.get(key, true);
-            if (data && data.value) {
-              const playerData = JSON.parse(data.value);
-              
-              if (playerData.timestamp > oneHourAgo) {
-                // Add percentage to player data
-                playerData.percentage = calculatePercentage(playerData.lines, playerData.extraBoxes);
-                playersData.push(playerData);
-              }
-            }
-          } catch (e) {
-            console.log('Could not load player:', key);
-          }
+      const allPlayersObj = JSON.parse(existingData);
+      const playersData = [];
+      const oneHourAgo = Date.now() - (60 * 60 * 1000);
+      
+      // 轉換物件為陣列並過濾過期資料
+      for (const [name, data] of Object.entries(allPlayersObj)) {
+        if (data.timestamp > oneHourAgo) {
+          // Add percentage to player data
+          data.percentage = calculatePercentage(data.lines, data.extraBoxes);
+          playersData.push(data);
         }
-        
-        playersData.sort((a, b) => {
-          if (b.lines !== a.lines) return b.lines - a.lines;
-          return b.extraBoxes - a.extraBoxes;
-        });
-        
-        setAllPlayers(playersData);
-        if (playersData.length === 0) {
-          setDebugInfo('⚠️ 所有玩家資料都超過1小時');
-        }
-      } else {
-        setDebugInfo('⚠️ 沒有找到任何玩家資料');
+      }
+      
+      setDebugInfo(`✅ 找到 ${playersData.length} 個活躍玩家`);
+      
+      // 排序：先按線數，再按額外格子數
+      playersData.sort((a, b) => {
+        if (b.lines !== a.lines) return b.lines - a.lines;
+        return b.extraBoxes - a.extraBoxes;
+      });
+      
+      setAllPlayers(playersData);
+      
+      if (playersData.length === 0) {
+        setDebugInfo('⚠️ 所有玩家資料都超過1小時');
       }
     } catch (error) {
       setDebugInfo(`❌ 錯誤: ${error.message}`);
@@ -357,7 +351,7 @@ export default function GamePage() {
     if (savedStates) {
       setTaskStates(JSON.parse(savedStates));
     }
-  }, []);
+  }, [tasks]);
 
   // Save task states to localStorage whenever they change
   useEffect(() => {
@@ -373,7 +367,7 @@ export default function GamePage() {
       localStorage.setItem('barHoppingTasks', JSON.stringify(newShuffled));
       setShuffledTasks(newShuffled);
     }
-  }, [language]);
+  }, [language, tasks]);
 
   // Calculate and update progress data whenever task states change
   useEffect(() => {
@@ -420,7 +414,7 @@ export default function GamePage() {
     }
   }, [taskStates, playerName, gameState]);
 
-  // 🔥 新增：同步進度到共享儲存的函數
+  // 🔥 新增：同步進度到共享儲存的函數（使用 localStorage）
   const saveProgressToSharedStorage = async (progress) => {
     try {
       const progressDataToSave = {
@@ -430,13 +424,18 @@ export default function GamePage() {
         timestamp: Date.now()
       };
       
-      await window.storage.set(
-        `bingo_player:${playerName}`, 
-        JSON.stringify(progressDataToSave), 
-        true
-      );
+      // 使用 localStorage 儲存所有玩家的進度
+      const allPlayersKey = 'bingo_all_players';
+      const existingData = localStorage.getItem(allPlayersKey);
+      let allPlayers = existingData ? JSON.parse(existingData) : {};
       
-      console.log('Progress synced to shared storage:', progressDataToSave);
+      // 更新當前玩家的資料
+      allPlayers[playerName] = progressDataToSave;
+      
+      // 儲存回 localStorage
+      localStorage.setItem(allPlayersKey, JSON.stringify(allPlayers));
+      
+      console.log('Progress synced to localStorage:', progressDataToSave);
     } catch (error) {
       console.log('Could not save to shared storage:', error);
     }
@@ -543,10 +542,16 @@ export default function GamePage() {
     localStorage.removeItem('barHoppingStates');
     localStorage.removeItem('playerName');
     
-    // 清除共享儲存中的玩家資料
+    // 從共享玩家列表中移除當前玩家
     if (playerName) {
       try {
-        window.storage.remove(`bingo_player:${playerName}`, true);
+        const allPlayersKey = 'bingo_all_players';
+        const existingData = localStorage.getItem(allPlayersKey);
+        if (existingData) {
+          const allPlayers = JSON.parse(existingData);
+          delete allPlayers[playerName];
+          localStorage.setItem(allPlayersKey, JSON.stringify(allPlayers));
+        }
       } catch (error) {
         console.log('Could not remove from shared storage:', error);
       }
