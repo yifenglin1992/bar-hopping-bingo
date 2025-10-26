@@ -148,13 +148,18 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
   // 即時監聽所有玩家資料
   useEffect(() => {
     console.log('📡 開始即時監聽 Firebase 資料...');
+    console.log('📍 Database reference:', database);
+    
     const playersRef = ref(database, 'players');
+    console.log('📍 Players reference:', playersRef);
     
     // 使用 onValue 持續監聽
     const unsubscribe = onValue(playersRef, (snapshot) => {
       try {
         const data = snapshot.val();
-        console.log('📥 收到 Firebase 資料:', data);
+        console.log('📥 收到 Firebase 原始資料:', data);
+        console.log('📊 資料類型:', typeof data);
+        console.log('📊 資料是否為 null:', data === null);
         
         if (!data) {
           console.log('⚠️ 沒有玩家資料');
@@ -166,12 +171,17 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
         const playersData = [];
         
         // 轉換物件為陣列（顯示所有玩家，不過濾）
+        console.log('🔄 開始轉換資料...');
         for (const [name, playerData] of Object.entries(data)) {
-          playerData.percentage = calculatePercentage(playerData.lines, playerData.extraBoxes);
-          playersData.push(playerData);
+          console.log(`  - 玩家: ${name}`, playerData);
+          const percentage = calculatePercentage(playerData.lines || 0, playerData.extraBoxes || 0);
+          playersData.push({
+            ...playerData,
+            percentage: percentage
+          });
         }
         
-        console.log('✅ 處理後的玩家資料:', playersData);
+        console.log('✅ 轉換後的玩家資料 (共 ' + playersData.length + ' 個):', playersData);
         
         // 排序：先按線數，再按額外格子數
         playersData.sort((a, b) => {
@@ -179,14 +189,20 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
           return b.extraBoxes - a.extraBoxes;
         });
         
+        console.log('🔀 排序後的玩家資料:', playersData);
+        
         setAllPlayers(playersData);
         setIsLoading(false);
+        console.log('✅ 狀態已更新');
       } catch (error) {
         console.error('❌ 處理 Firebase 資料時出錯:', error);
+        console.error('❌ 錯誤堆疊:', error.stack);
         setIsLoading(false);
       }
     }, (error) => {
       console.error('❌ Firebase 監聽錯誤:', error);
+      console.error('❌ 錯誤代碼:', error.code);
+      console.error('❌ 錯誤訊息:', error.message);
       setIsLoading(false);
     });
     
@@ -268,13 +284,21 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
             </div>
           </div>
           
+          {/* 除錯資訊 */}
+          <div className="text-xs text-gray-400 mb-2 font-mono">
+            載入狀態: {isLoading ? '載入中' : '完成'} | 玩家數: {allPlayers.length}
+          </div>
+          
           {isLoading ? (
             <div className="text-center text-gray-500 py-4">
               {language === 'chinese' ? '載入中...' : 'Loading...'}
             </div>
           ) : allPlayers.length === 0 ? (
             <div className="text-center text-gray-500 py-4">
-              {language === 'chinese' ? '目前沒有玩家' : 'No players yet'}
+              <div className="mb-2">{language === 'chinese' ? '目前沒有玩家資料' : 'No players data yet'}</div>
+              <div className="text-xs text-gray-400">
+                請確認其他玩家已開始遊戲並完成任務
+              </div>
             </div>
           ) : (
             <div className="space-y-4">
