@@ -137,8 +137,8 @@ function HomePage({ onStartGame, language, setLanguage }) {
 // Progress View Page Component
 function ProgressViewPage({ onBack, progressData, language, playerName }) {
   const [allPlayers, setAllPlayers] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [debugInfo, setDebugInfo] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState(null);
 
   // Calculate percentage for progress bar
   const calculatePercentage = (lines, extraBoxes) => {
@@ -146,37 +146,31 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
     return Math.round((totalBoxes / 16) * 100);
   };
 
-  // Load all players data from Firebase (real-time)
+  // Load all players data from Firebase (manual refresh only)
   const loadAllPlayers = () => {
+    setIsLoading(true);
     try {
-      setDebugInfo('✅ 正在連接 Firebase...');
-      
       const playersRef = ref(database, 'players');
       
-      // 使用 onValue 監聽即時更新
-      const unsubscribe = onValue(playersRef, (snapshot) => {
+      // 使用 get 而非 onValue，只讀取一次
+      onValue(playersRef, (snapshot) => {
         const data = snapshot.val();
         
         if (!data) {
-          setDebugInfo('⚠️ Firebase 中還沒有玩家資料');
           setAllPlayers([]);
           setIsLoading(false);
+          setLastUpdateTime(new Date());
           return;
         }
         
         const playersData = [];
-        const oneHourAgo = Date.now() - (60 * 60 * 1000);
         
-        // 轉換物件為陣列並過濾過期資料
+        // 轉換物件為陣列（不過濾時間）
         for (const [name, playerData] of Object.entries(data)) {
-          if (playerData.timestamp > oneHourAgo) {
-            // Add percentage to player data
-            playerData.percentage = calculatePercentage(playerData.lines, playerData.extraBoxes);
-            playersData.push(playerData);
-          }
+          // Add percentage to player data
+          playerData.percentage = calculatePercentage(playerData.lines, playerData.extraBoxes);
+          playersData.push(playerData);
         }
-        
-        setDebugInfo(`✅ 找到 ${playersData.length} 個活躍玩家（即時更新）`);
         
         // 排序：先按線數，再按額外格子數
         playersData.sort((a, b) => {
@@ -186,33 +180,21 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
         
         setAllPlayers(playersData);
         setIsLoading(false);
-        
-        if (playersData.length === 0) {
-          setDebugInfo('⚠️ 所有玩家資料都超過1小時');
-        }
+        setLastUpdateTime(new Date());
       }, (error) => {
-        setDebugInfo(`❌ Firebase 錯誤: ${error.message}`);
         console.log('Firebase error:', error);
         setIsLoading(false);
-      });
+      }, { onlyOnce: true }); // 只讀取一次
       
-      // 返回清理函數
-      return unsubscribe;
     } catch (error) {
-      setDebugInfo(`❌ 初始化錯誤: ${error.message}`);
       console.log('Initialization error:', error);
       setIsLoading(false);
     }
   };
 
+  // 初次載入時讀取資料
   useEffect(() => {
-    const unsubscribe = loadAllPlayers();
-    // 清理監聽器
-    return () => {
-      if (unsubscribe && typeof unsubscribe === 'function') {
-        unsubscribe();
-      }
-    };
+    loadAllPlayers();
   }, []);
 
   const formatProgress = (lines, extraBoxes, lang) => {
@@ -251,14 +233,7 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
       </button>
 
       {/* Content container */}
-      <div className="relative z-10 px-4 pt-20 pb-8 h-full overflow-y-auto">
-        {/* Debug Info - 診斷資訊 */}
-        {debugInfo && (
-          <div className="bg-blue-100 border border-blue-400 rounded-lg p-3 mb-4 text-sm">
-            <div className="font-mono text-blue-800">{debugInfo}</div>
-          </div>
-        )}
-
+      <div className="relative z-10 px-4 pt-20 pb-24 h-full overflow-y-auto">
         {/* My Progress Card */}
         <div className="bg-white/95 rounded-2xl p-4 mb-4">
           <div className="text-black text-base font-bold mb-2">
@@ -321,7 +296,33 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
               })}
             </div>
           )}
+          
+          {/* 顯示最後更新時間 */}
+          {lastUpdateTime && (
+            <div className="text-center text-gray-400 text-xs mt-3">
+              {language === 'chinese' ? '最後更新:' : 'Last updated:'} {lastUpdateTime.toLocaleTimeString()}
+            </div>
+          )}
         </div>
+      </div>
+
+      {/* Update button - fixed at bottom */}
+      <div className="absolute bottom-0 left-0 right-0 z-30 px-4 pb-6 bg-gradient-to-t from-blue-900 via-blue-900 to-transparent pt-4">
+        <button
+          onClick={loadAllPlayers}
+          disabled={isLoading}
+          className={`w-full h-14 rounded-2xl shadow-lg relative overflow-hidden transition-opacity ${
+            isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
+          }`}
+        >
+          <div className="w-full h-full absolute inset-0 bg-gradient-to-r from-orange-500 to-yellow-400" />
+          <div className="relative text-center text-black text-lg font-bold">
+            {isLoading 
+              ? (language === 'chinese' ? '載入中...' : 'Loading...') 
+              : (language === 'chinese' ? '更新其他玩家進度' : 'Update Players Progress')
+            }
+          </div>
+        </button>
       </div>
     </div>
   );
@@ -351,11 +352,30 @@ export default function GamePage() {
 
   // Initialize or load tasks from localStorage
   useEffect(() => {
+    // 確保 tasks 已經有值才執行
+    if (tasks.length === 0) return;
+    
     const savedTasks = localStorage.getItem('barHoppingTasks');
     const savedStates = localStorage.getItem('barHoppingStates');
     
     if (savedTasks) {
-      setShuffledTasks(JSON.parse(savedTasks));
+      try {
+        const parsed = JSON.parse(savedTasks);
+        // 確認載入的任務數量正確
+        if (parsed.length === 16) {
+          setShuffledTasks(parsed);
+        } else {
+          // 如果數量不對，重新洗牌
+          const newShuffled = shuffleArray(tasks);
+          localStorage.setItem('barHoppingTasks', JSON.stringify(newShuffled));
+          setShuffledTasks(newShuffled);
+        }
+      } catch (e) {
+        // 如果解析失敗，重新洗牌
+        const newShuffled = shuffleArray(tasks);
+        localStorage.setItem('barHoppingTasks', JSON.stringify(newShuffled));
+        setShuffledTasks(newShuffled);
+      }
     } else {
       const newShuffled = shuffleArray(tasks);
       localStorage.setItem('barHoppingTasks', JSON.stringify(newShuffled));
