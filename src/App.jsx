@@ -137,8 +137,7 @@ function HomePage({ onStartGame, language, setLanguage }) {
 // Progress View Page Component
 function ProgressViewPage({ onBack, progressData, language, playerName }) {
   const [allPlayers, setAllPlayers] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [lastUpdateTime, setLastUpdateTime] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Calculate percentage for progress bar
   const calculatePercentage = (lines, extraBoxes) => {
@@ -146,33 +145,33 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
     return Math.round((totalBoxes / 16) * 100);
   };
 
-  // Load all players data from Firebase (manual refresh only)
-  const loadAllPlayers = () => {
-    setIsLoading(true);
+  // 即時監聽所有玩家資料
+  useEffect(() => {
+    console.log('📡 開始即時監聽 Firebase 資料...');
     const playersRef = ref(database, 'players');
     
-    // 使用 onValue 但只監聽一次
+    // 使用 onValue 持續監聽
     const unsubscribe = onValue(playersRef, (snapshot) => {
       try {
         const data = snapshot.val();
+        console.log('📥 收到 Firebase 資料:', data);
         
         if (!data) {
+          console.log('⚠️ 沒有玩家資料');
           setAllPlayers([]);
           setIsLoading(false);
-          setLastUpdateTime(new Date());
-          // 立即取消訂閱
-          unsubscribe();
           return;
         }
         
         const playersData = [];
         
-        // 轉換物件為陣列（不過濾時間）
+        // 轉換物件為陣列（顯示所有玩家，不過濾）
         for (const [name, playerData] of Object.entries(data)) {
-          // Add percentage to player data
           playerData.percentage = calculatePercentage(playerData.lines, playerData.extraBoxes);
           playersData.push(playerData);
         }
+        
+        console.log('✅ 處理後的玩家資料:', playersData);
         
         // 排序：先按線數，再按額外格子數
         playersData.sort((a, b) => {
@@ -182,24 +181,20 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
         
         setAllPlayers(playersData);
         setIsLoading(false);
-        setLastUpdateTime(new Date());
-        
-        // 讀取完畢後立即取消訂閱
-        unsubscribe();
       } catch (error) {
-        console.log('Error processing data:', error);
+        console.error('❌ 處理 Firebase 資料時出錯:', error);
         setIsLoading(false);
-        unsubscribe();
       }
     }, (error) => {
-      console.log('Firebase error:', error);
+      console.error('❌ Firebase 監聽錯誤:', error);
       setIsLoading(false);
     });
-  };
-
-  // 初次載入時讀取資料
-  useEffect(() => {
-    loadAllPlayers();
+    
+    // 清理函數：離開頁面時取消監聽
+    return () => {
+      console.log('🔌 取消 Firebase 監聽');
+      unsubscribe();
+    };
   }, []);
 
   const formatProgress = (lines, extraBoxes, lang) => {
@@ -238,7 +233,7 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
       </button>
 
       {/* Content container */}
-      <div className="relative z-10 px-4 pt-20 pb-24 h-full overflow-y-auto">
+      <div className="relative z-10 px-4 pt-20 pb-8 h-full overflow-y-auto">
         {/* My Progress Card */}
         <div className="bg-white/95 rounded-2xl p-4 mb-4">
           <div className="text-black text-base font-bold mb-2">
@@ -261,8 +256,16 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
 
         {/* Other Players Progress Card */}
         <div className="bg-white/95 rounded-2xl p-4 mb-4">
-          <div className="text-black text-base font-bold mb-4">
-            {language === 'chinese' ? '其他玩家進度:' : 'Other Players Progress:'}
+          <div className="flex justify-between items-center mb-4">
+            <div className="text-black text-base font-bold">
+              {language === 'chinese' ? '所有玩家進度:' : 'All Players Progress:'}
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <div className="text-gray-500 text-xs">
+                {language === 'chinese' ? '即時更新' : 'Live'}
+              </div>
+            </div>
           </div>
           
           {isLoading ? (
@@ -271,7 +274,7 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
             </div>
           ) : allPlayers.length === 0 ? (
             <div className="text-center text-gray-500 py-4">
-              {language === 'chinese' ? '目前沒有其他玩家' : 'No other players yet'}
+              {language === 'chinese' ? '目前沒有玩家' : 'No players yet'}
             </div>
           ) : (
             <div className="space-y-4">
@@ -301,33 +304,7 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
               })}
             </div>
           )}
-          
-          {/* 顯示最後更新時間 */}
-          {lastUpdateTime && (
-            <div className="text-center text-gray-400 text-xs mt-3">
-              {language === 'chinese' ? '最後更新:' : 'Last updated:'} {lastUpdateTime.toLocaleTimeString()}
-            </div>
-          )}
         </div>
-      </div>
-
-      {/* Update button - fixed at bottom */}
-      <div className="absolute bottom-0 left-0 right-0 z-30 px-4 pb-6 bg-gradient-to-t from-blue-900 via-blue-900 to-transparent pt-4">
-        <button
-          onClick={loadAllPlayers}
-          disabled={isLoading}
-          className={`w-full h-14 rounded-2xl shadow-lg relative overflow-hidden transition-opacity ${
-            isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'
-          }`}
-        >
-          <div className="w-full h-full absolute inset-0 bg-gradient-to-r from-orange-500 to-yellow-400" />
-          <div className="relative text-center text-black text-lg font-bold">
-            {isLoading 
-              ? (language === 'chinese' ? '載入中...' : 'Loading...') 
-              : (language === 'chinese' ? '更新其他玩家進度' : 'Update Players Progress')
-            }
-          </div>
-        </button>
       </div>
     </div>
   );
@@ -346,51 +323,59 @@ export default function GamePage() {
 
   const tasks = language === 'chinese' ? tasksChinese : tasksEnglish;
 
+  // 🔥 立即初始化任務（在組件載入時）
+  useEffect(() => {
+    console.log('🎮 初始化任務列表...');
+    if (tasks.length === 0) {
+      console.log('⚠️ 任務列表為空，等待載入...');
+      return;
+    }
+    
+    const savedTasks = localStorage.getItem('barHoppingTasks');
+    
+    if (savedTasks) {
+      try {
+        const parsed = JSON.parse(savedTasks);
+        if (parsed.length === 16) {
+          console.log('✅ 載入已保存的任務');
+          setShuffledTasks(parsed);
+          return;
+        }
+      } catch (e) {
+        console.log('⚠️ 解析保存的任務失敗');
+      }
+    }
+    
+    // 如果沒有保存的任務或載入失敗，創建新的
+    console.log('🔀 創建新的任務順序');
+    const newShuffled = shuffleArray(tasks);
+    localStorage.setItem('barHoppingTasks', JSON.stringify(newShuffled));
+    setShuffledTasks(newShuffled);
+  }, [language]); // 只在語言改變時重新初始化
+
   // 🔥 檢查是否有保存的玩家名稱，如果有則直接進入遊戲
   useEffect(() => {
     const savedPlayerName = localStorage.getItem('playerName');
     if (savedPlayerName) {
+      console.log('👤 發現已保存的玩家:', savedPlayerName);
       setPlayerName(savedPlayerName);
       setGameState('game');
     }
   }, []);
 
-  // Initialize or load tasks from localStorage
+  // 🔥 載入已保存的任務狀態
   useEffect(() => {
-    // 確保 tasks 已經有值才執行
-    if (tasks.length === 0) return;
-    
-    const savedTasks = localStorage.getItem('barHoppingTasks');
     const savedStates = localStorage.getItem('barHoppingStates');
-    
-    if (savedTasks) {
-      try {
-        const parsed = JSON.parse(savedTasks);
-        // 確認載入的任務數量正確
-        if (parsed.length === 16) {
-          setShuffledTasks(parsed);
-        } else {
-          // 如果數量不對，重新洗牌
-          const newShuffled = shuffleArray(tasks);
-          localStorage.setItem('barHoppingTasks', JSON.stringify(newShuffled));
-          setShuffledTasks(newShuffled);
-        }
-      } catch (e) {
-        // 如果解析失敗，重新洗牌
-        const newShuffled = shuffleArray(tasks);
-        localStorage.setItem('barHoppingTasks', JSON.stringify(newShuffled));
-        setShuffledTasks(newShuffled);
-      }
-    } else {
-      const newShuffled = shuffleArray(tasks);
-      localStorage.setItem('barHoppingTasks', JSON.stringify(newShuffled));
-      setShuffledTasks(newShuffled);
-    }
-    
     if (savedStates) {
-      setTaskStates(JSON.parse(savedStates));
+      try {
+        const parsed = JSON.parse(savedStates);
+        console.log('✅ 載入已保存的任務狀態');
+        setTaskStates(parsed);
+      } catch (e) {
+        console.log('⚠️ 解析任務狀態失敗');
+      }
     }
-  }, [tasks]);
+  }, []);
 
   // Save task states to localStorage whenever they change
   useEffect(() => {
@@ -445,17 +430,23 @@ export default function GamePage() {
     const finishedCount = finishedIndices.length;
     const extraBoxes = Math.max(0, finishedCount - (lines * 4));
     
+    console.log('📊 進度更新:', { lines, extraBoxes, finishedCount });
     setProgressData({ lines, extraBoxes });
 
-    // 🔥 同步到共享儲存（新增）
+    // 🔥 同步到 Firebase
     if (playerName && gameState === 'game') {
+      console.log('📤 準備同步進度到 Firebase...');
       saveProgressToSharedStorage({ lines, extraBoxes });
+    } else {
+      console.log('⚠️ 跳過同步:', { playerName, gameState });
     }
   }, [taskStates, playerName, gameState]);
 
   // 🔥 新增：同步進度到 Firebase Realtime Database
   const saveProgressToSharedStorage = async (progress) => {
     try {
+      console.log('🔥 開始同步到 Firebase...', { playerName, progress });
+      
       const progressDataToSave = {
         playerName: playerName,
         lines: progress.lines,
@@ -467,13 +458,20 @@ export default function GamePage() {
       const playerRef = ref(database, `players/${playerName}`);
       await set(playerRef, progressDataToSave);
       
-      console.log('✅ Progress synced to Firebase:', progressDataToSave);
+      console.log('✅ Firebase 同步成功:', progressDataToSave);
     } catch (error) {
-      console.log('❌ Could not save to Firebase:', error);
+      console.error('❌ Firebase 同步失敗:', error);
+      console.error('錯誤詳情:', {
+        message: error.message,
+        code: error.code,
+        playerName: playerName,
+        progress: progress
+      });
     }
   };
 
   const handleStartGame = (name) => {
+    console.log('🎮 遊戲開始，玩家:', name);
     setPlayerName(name);
     setGameState('game');
     
@@ -482,6 +480,7 @@ export default function GamePage() {
     
     // 🔥 遊戲開始時立即同步初始進度
     setTimeout(() => {
+      console.log('📤 同步初始進度...');
       saveProgressToSharedStorage({ lines: 0, extraBoxes: 0 });
     }, 100);
   };
