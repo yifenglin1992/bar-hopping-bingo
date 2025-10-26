@@ -174,9 +174,32 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
         console.log('🔄 開始轉換資料...');
         for (const [name, playerData] of Object.entries(data)) {
           console.log(`  - 玩家: ${name}`, playerData);
-          const percentage = calculatePercentage(playerData.lines || 0, playerData.extraBoxes || 0);
+          
+          // 🔥 驗證資料完整性
+          if (!playerData || typeof playerData !== 'object') {
+            console.warn(`  ⚠️ 跳過無效資料: ${name}`, playerData);
+            continue;
+          }
+          
+          // 確保必要欄位存在
+          const lines = typeof playerData.lines === 'number' ? playerData.lines : 0;
+          const extraBoxes = typeof playerData.extraBoxes === 'number' ? playerData.extraBoxes : 0;
+          const playerName = playerData.playerName || name;
+          const timestamp = playerData.timestamp || Date.now();
+          
+          // 🔥 過濾太舊的資料（超過 24 小時）
+          const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+          if (timestamp < oneDayAgo) {
+            console.warn(`  ⚠️ 跳過過期資料: ${name} (${new Date(timestamp).toLocaleString()})`);
+            continue;
+          }
+          
+          const percentage = calculatePercentage(lines, extraBoxes);
           playersData.push({
-            ...playerData,
+            playerName: playerName,
+            lines: lines,
+            extraBoxes: extraBoxes,
+            timestamp: timestamp,
             percentage: percentage
           });
         }
@@ -214,16 +237,20 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
   }, []);
 
   const formatProgress = (lines, extraBoxes, lang) => {
-    if (lines === 0) {
-      return extraBoxes > 0 
-        ? (lang === 'chinese' ? `${extraBoxes}格` : `${extraBoxes} boxes`)
+    // 確保參數是數字
+    const safeLines = typeof lines === 'number' ? lines : 0;
+    const safeExtraBoxes = typeof extraBoxes === 'number' ? extraBoxes : 0;
+    
+    if (safeLines === 0) {
+      return safeExtraBoxes > 0 
+        ? (lang === 'chinese' ? `${safeExtraBoxes}格` : `${safeExtraBoxes} boxes`)
         : (lang === 'chinese' ? '0條線' : '0 lines');
-    } else if (lines === 3) {
+    } else if (safeLines === 3) {
       return lang === 'chinese' ? '3條線' : '3 lines';
     } else {
-      return extraBoxes > 0
-        ? (lang === 'chinese' ? `${lines}條線+${extraBoxes}格` : `${lines} lines+${extraBoxes}`)
-        : (lang === 'chinese' ? `${lines}條線` : `${lines} lines`);
+      return safeExtraBoxes > 0
+        ? (lang === 'chinese' ? `${safeLines}條線+${safeExtraBoxes}格` : `${safeLines} lines+${safeExtraBoxes}`)
+        : (lang === 'chinese' ? `${safeLines}條線` : `${safeLines} lines`);
     }
   };
 
