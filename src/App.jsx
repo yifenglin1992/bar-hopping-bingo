@@ -114,7 +114,7 @@ function HomePage({ onStartGame, language, setLanguage }) {
             className="w-full h-14 bg-transparent rounded-2xl border-2 border-white flex justify-center items-center hover:bg-white/10 transition-colors"
           >
             <div className="text-center text-white text-base">
-              {language === 'chinese' ? '語言: 中文' : 'Language: English'}
+              {language === 'chinese' ? 'English' : '中文'}
             </div>
           </button>
         </div>
@@ -149,17 +149,19 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
   // Load all players data from Firebase (manual refresh only)
   const loadAllPlayers = () => {
     setIsLoading(true);
-    try {
-      const playersRef = ref(database, 'players');
-      
-      // 使用 get 而非 onValue，只讀取一次
-      onValue(playersRef, (snapshot) => {
+    const playersRef = ref(database, 'players');
+    
+    // 使用 onValue 但只監聽一次
+    const unsubscribe = onValue(playersRef, (snapshot) => {
+      try {
         const data = snapshot.val();
         
         if (!data) {
           setAllPlayers([]);
           setIsLoading(false);
           setLastUpdateTime(new Date());
+          // 立即取消訂閱
+          unsubscribe();
           return;
         }
         
@@ -181,15 +183,18 @@ function ProgressViewPage({ onBack, progressData, language, playerName }) {
         setAllPlayers(playersData);
         setIsLoading(false);
         setLastUpdateTime(new Date());
-      }, (error) => {
-        console.log('Firebase error:', error);
+        
+        // 讀取完畢後立即取消訂閱
+        unsubscribe();
+      } catch (error) {
+        console.log('Error processing data:', error);
         setIsLoading(false);
-      }, { onlyOnce: true }); // 只讀取一次
-      
-    } catch (error) {
-      console.log('Initialization error:', error);
+        unsubscribe();
+      }
+    }, (error) => {
+      console.log('Firebase error:', error);
       setIsLoading(false);
-    }
+    });
   };
 
   // 初次載入時讀取資料
